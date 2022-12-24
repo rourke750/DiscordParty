@@ -1,6 +1,8 @@
 import discord
+from discord import app_commands
 from discord.ext import commands
-from discord_slash import SlashCommand, SlashContext
+from discord.ext.commands import has_permissions, has_role
+
 
 import os
 from dotenv import load_dotenv
@@ -19,13 +21,72 @@ intents = discord.Intents.all()
 GLOBAL_GUILDS = {}
 
 bot = commands.Bot(command_prefix='/', description=description, intents=intents)
-slash = SlashCommand(bot, sync_commands=False)
 
-@slash.slash(name="private")
-async def private(ctx: SlashContext):
-    guild = GLOBAL_GUILDS[ctx.guild_id]
+
+        
+def has_permission_or_role(ctx):
+    for r in ctx.author.roles:
+        if r.name == 'houseparty-admin':
+            return True
+    return ctx.author.guild_permissions.administrator
+
+@commands.guild_only()
+@bot.command()
+@commands.is_owner()
+async def sync(ctx, all=False):
+    if not all:
+        bot.tree.copy_global_to(guild=ctx.guild)
+        await bot.tree.sync(guild=ctx.guild)
+    else:
+        for guild_id in GLOBAL_GUILDS:
+            guild = GLOBAL_GUILDS[guild_id]
+            bot.tree.clear_commands(guild=guild)
+            await bot.tree.sync(guild=guild)
+        await bot.tree.sync()
+        
+@commands.guild_only()
+@bot.hybrid_group(name="houseparty", description="admin command", with_app_command=True)
+@commands.is_owner()
+async def houseparty(ctx):
+    await ctx.send("Parent command!")
     
-    user_id = ctx.author_id
+@houseparty.command(name="clear", description="clear all house party related channels", with_app_command=True)
+@commands.guild_only()
+@commands.check(has_permission_or_role)
+async def clear_command(ctx):
+    guild = ctx.guild
+    # will be global command for configuring but for now just reset guild
+    
+    broadcasts = discord.utils.get(guild.categories, name=f'broadcast')
+    sneak_chat = discord.utils.get(guild.categories, name=f'sneak')
+    notifications_chat = discord.utils.get(guild.categories, name=f'notifications')
+    private_channels = discord.utils.get(guild.categories, name=f'private_house_channel')
+    delete_sub_channels_and_category(guild, [broadcasts, sneak_chat, notifications_chat, private_channels])
+    
+    await ctx.send('Finished Deleting channels')
+    
+@houseparty.command(name="create", description="create all house party related channels", with_app_command=True)
+@commands.guild_only()
+@commands.check(has_permission_or_role)
+async def create_command(ctx):
+    guild = ctx.guild
+    await setup_guild(guild)
+    await ctx.send('Finished creating channels, roles, and categories')
+    
+def delete_sub_channels_and_category(guild, categories):
+    channels = []
+    for cat in categories:
+        for chan in cat.channels:
+            channels.append(chan.delete())
+        channels.append(cat.delete())
+    asyncio.gather(*channels)
+            
+
+@commands.guild_only()
+@houseparty.command(name="private", description="Command to lock your channel with the people inside", with_app_command=True)
+async def private(ctx: commands.Context):
+    guild = GLOBAL_GUILDS[ctx.guild.id]
+    user_id = ctx.author.id
     member = guild.get_member(user_id)
     v = member.voice
     if v is None:
@@ -36,11 +97,13 @@ async def private(ctx: SlashContext):
     # 1. give everyone in channel role
     # 2. set channel role
     role = await guild.create_role(name=f'{member.name}-PrivateRole')
+    house_party_role = discord.utils.get(guild.roles, name=f'houseparty')
     category = discord.utils.get(guild.categories, name=f'private_house_channel')
-    new_channel = await guild.create_voice_channel(name=f'{member.name}-PrivateRole', category=category)
     perms = {'speak': True, 'view_channel': True, 'connect': True, 'use_voice_activation': True, }
     overwrite = discord.PermissionOverwrite(**perms)
-    await new_channel.set_permissions(role, reason='Temp private channel', overwrite=overwrite)
+    bot_account = discord.PermissionOverwrite(**{'speak': False, 'view_channel': True, 'connect': True})
+    new_channel = await guild.create_voice_channel(name=f'{member.name}-PrivateRole', category=category, overwrites={role: overwrite, house_party_role: bot_account})
+    #await new_channel.set_permissions(role, reason='Temp private channel', overwrite=overwrite)
     
     # set the private_house_party_role so we can delete this later
     private_house_role = discord.utils.get(guild.roles, name='private_house_party_role')
@@ -57,13 +120,16 @@ async def private(ctx: SlashContext):
     await asyncio.gather(*tasks)
     
     await ctx.send('Locking channel')
-
-@bot.command(
-    help="Use this command to create a private channel"
-)
-async def test(ctx):
-    print('test')
-    await ctx.send('test')
+    
+@create_command.error
+@clear_command.error
+async def command_error(ctx, error):
+    if isinstance(error, commands.NotOwner):
+        await ctx.send('Only the owner of this bot can run this command')
+    elif isinstance(error, commands.MissingPermissions) or isinstance(error, commands.MissingRole) or isinstance(error, commands.CheckFailure):
+        await ctx.send('You have to be an admin or have the role houseparty-admin')
+    else:
+        print(error)
 
 @bot.event
 async def on_ready():
@@ -89,9 +155,11 @@ async def setup_guild(guild):
 async def create_categories_for_guild(guild):
     priv_chat = discord.utils.get(guild.categories, name=f'private_house_channel')
     if priv_chat is None:
+        house_party_role = role = discord.utils.get(guild.roles, name=f'houseparty')
+        bot_account = discord.PermissionOverwrite(**{'speak': True, 'view_channel': True, 'connect': True, 'manage_channels': True})
         perms = {'speak': True, 'view_channel': True, 'connect': False}
         overwrite = discord.PermissionOverwrite(**perms)
-        priv_chat = await guild.create_category("private_house_channel", overwrites={guild.default_role: overwrite}, reason=None)
+        priv_chat = await guild.create_category("private_house_channel", overwrites={guild.default_role: overwrite, house_party_role: bot_account}, reason=None)
         
     sneak_chat = discord.utils.get(guild.categories, name=f'sneak')
     if sneak_chat is None:
@@ -122,6 +190,10 @@ async def create_roles_for_guild(guild):
     if private_house_role is None:
         private_house_role = await guild.create_role(name=f'private_house_party_role')
         
+    admin_role = discord.utils.get(guild.roles, name=f'houseparty-admin')
+    if admin_role is None:
+        admin_role = await guild.create_role(name=f'houseparty-admin')
+        
 async def create_default_channels_for_guild(guild):
     channel = discord.utils.get(guild.channels, name=f'house-party')
     if channel is None:
@@ -150,6 +222,8 @@ async def remove_zero_house_channel(chan):
     broadcast_chat = discord.utils.get(guild.categories, name=f'broadcast')
     channels = None
     for cat_tuple in guild.by_category():
+        if cat_tuple[0] is None:
+            continue
         if broadcast_chat.id == cat_tuple[0].id:
             channels = cat_tuple[1]
             break
@@ -174,7 +248,7 @@ async def on_voice_state_update(member, before, after):
             return
         if cat.name == 'private_house_channel':
             for r in voice_chan_before.overwrites:
-                if type(r) is discord.Role and r.name != 'private_house_party_role' and r.name != '@everyone':
+                if type(r) is discord.Role and r.name != 'private_house_party_role' and r.name != '@everyone' and r.name != 'houseparty':
                     await r.delete()
             await voice_chan_before.delete()
     
