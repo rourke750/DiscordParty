@@ -82,3 +82,13 @@ async def remove_zero_house_channel(chan):
             break
     if len(channels) > 1:
         await chan.delete()
+        
+
+        
+def delete_sub_channels_and_category(self, guild, categories):
+    channels = []
+    for cat in categories:
+        for chan in cat.channels:
+            channels.append(chan.delete())
+        channels.append(cat.delete())
+    asyncio.gather(*channels)

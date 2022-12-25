@@ -88,6 +88,6 @@ async def on_voice_state_update(member, before, after):
             members_len = len(voice_chan_before.members)
             if members_len == 0:
                 await remove_zero_house_channel(voice_chan_before)
-    
+
 asyncio.run(bot.add_cog(DiscordPartyCommands(bot)))
 bot.run(TOKEN)

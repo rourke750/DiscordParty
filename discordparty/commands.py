@@ -13,21 +13,47 @@ class DiscordPartyCommands(commands.Cog):
     @commands.is_owner()
     async def sync(self, ctx, all=False):
         if not all:
-            bot.tree.copy_global_to(guild=ctx.guild)
-            await bot.tree.sync(guild=ctx.guild)
+            self.bot.tree.clear_commands(guild=ctx.guild)
+            self.bot.tree.copy_global_to(guild=ctx.guild)
+            await self.bot.tree.sync(guild=ctx.guild)
         else:
-            for guild_id in GLOBAL_GUILDS:
-                guild = GLOBAL_GUILDS[guild_id]
-                bot.tree.clear_commands(guild=guild)
-                await bot.tree.sync(guild=guild)
-            await bot.tree.sync()
+            for guild in self.bot.guilds:
+                self.bot.tree.clear_commands(guild=guild)
+                await self.bot.tree.sync(guild=guild)
+            await self.bot.tree.sync()
             
     @commands.guild_only()
     @commands.hybrid_group(name="houseparty", description="admin command", with_app_command=True)
     async def houseparty(self, ctx):
         await ctx.send("Parent command!")
         
-    @houseparty.command(name="clear", description="clear all house party related channels", with_app_command=True)
+    @commands.guild_only()
+    @houseparty.group(name="refresh", description="allow refreshing of channels", with_app_command=True)
+    @commands.check(has_permission_or_role)
+    async def refresh(self, ctx):
+        await ctx.send("Parent command!")
+        
+    @commands.guild_only()
+    @houseparty.group(name="config", description="allow modifying house party configuration", with_app_command=True)
+    @commands.check(has_permission_or_role)
+    async def config(self, ctx):
+        await ctx.send("Parent command!")
+        
+    @config.command(name="set_admin", description="sets a user as admin or not for houseparty", with_app_command=True)
+    @commands.guild_only()
+    @commands.check(has_permission_or_role)
+    async def add_houseparty_admin(self, ctx, member: discord.Member, enable: bool):
+        admin_role = discord.utils.get(ctx.guild.roles, name=f'houseparty-admin')
+        if enable:
+            await member.add_roles(admin_role)
+            msg = f'Added member ${member.name} to admin'
+        else:
+            await member.remove_roles(admin_role)
+            msg = f'Removed member ${member.name} to admin'
+        await ctx.send(msg)
+            
+        
+    @refresh.command(name="clear", description="clear all house party related channels", with_app_command=True)
     @commands.guild_only()
     @commands.check(has_permission_or_role)
     async def clear_command(self, ctx):
@@ -42,27 +68,18 @@ class DiscordPartyCommands(commands.Cog):
         
         await ctx.send('Finished Deleting channels')
         
-    @houseparty.command(name="create", description="create all house party related channels", with_app_command=True)
+    @refresh.command(name="create", description="create all house party related channels", with_app_command=True)
     @commands.guild_only()
     @commands.check(has_permission_or_role)
     async def create_command(self, ctx):
         guild = ctx.guild
         await setup_guild(guild)
-        await ctx.send('Finished creating channels, roles, and categories')
-        
-    def delete_sub_channels_and_category(self, guild, categories):
-        channels = []
-        for cat in categories:
-            for chan in cat.channels:
-                channels.append(chan.delete())
-            channels.append(cat.delete())
-        asyncio.gather(*channels)
-                
+        await ctx.send('Finished creating channels, roles, and categories')                
 
     @commands.guild_only()
     @houseparty.command(name="private", description="Command to lock your channel with the people inside", with_app_command=True)
     async def private(self, ctx: commands.Context):
-        guild = GLOBAL_GUILDS[ctx.guild.id]
+        guild = ctx.guild
         user_id = ctx.author.id
         member = guild.get_member(user_id)
         v = member.voice
