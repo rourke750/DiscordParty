@@ -19,7 +19,7 @@ TOKEN = os.getenv("DISCORD_TOKEN")
 description = '''Commands to use houseparty features'''
 
 intents = discord.Intents.all()
-GLOBAL_GUILDS = {}
+#GLOBAL_GUILDS = {}
 
 bot = commands.Bot(command_prefix='/', description=description, intents=intents)
 
@@ -30,14 +30,14 @@ async def on_ready():
     
     tasks = []
     for guild in bot.guilds:
-        GLOBAL_GUILDS[guild.id] = guild
-        tasks.append(setup_guild(guild))
+        #GLOBAL_GUILDS[guild.id] = guild
+        tasks.append(setup_guild(guild, bot))
     await asyncio.gather(*tasks)
         
 @bot.event
 async def on_guild_join(guild):
-    GLOBAL_GUILDS[guild.id] = guild
-    await setup_guild(guild)
+    #GLOBAL_GUILDS[guild.id] = guild
+    await setup_guild(guild, bot)
     
     
 @bot.event
@@ -56,8 +56,9 @@ async def on_voice_state_update(member, before, after):
         if cat is None:
             return
         if cat.name == 'private_house_channel':
+            bot_role = getBotMainRole(member.guild, bot)
             for r in voice_chan_before.overwrites:
-                if type(r) is discord.Role and r.name != 'private_house_party_role' and r.name != '@everyone' and r.name != 'houseparty':
+                if type(r) is discord.Role and r.name != 'private_house_party_role' and r.name != '@everyone' and r.name != bot_role.name:
                     await r.delete()
             await voice_chan_before.delete()
     
@@ -77,7 +78,7 @@ async def on_voice_state_update(member, before, after):
                 await chan.send(f'{members} are in the house together')
             else:
                 await chan.send(f'{voice_chan_after.members[0].name} has entered the chat @everyone')
-                await handle_multi_house_channel(member.guild.id)
+                await handle_multi_house_channel(member.guild)
                 pass
     if voice_chan_before is not None:
         # handle case where we want to delete too many channels

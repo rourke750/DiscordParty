@@ -1,17 +1,21 @@
 import discord
 
-async def setup_guild(guild):
+async def setup_guild(guild, bot):
     await create_roles_for_guild(guild) # create roles for guild 
-    await create_categories_for_guild(guild)
+    await create_categories_for_guild(guild, bot)
     await create_default_channels_for_guild(guild)
         
-async def create_categories_for_guild(guild):
+async def create_categories_for_guild(guild, bot):
     priv_chat = discord.utils.get(guild.categories, name=f'private_house_channel')
     if priv_chat is None:
-        house_party_role = role = discord.utils.get(guild.roles, name=f'houseparty')
+        house_party_roles = guild.get_member(bot.user.id).roles
+        for role in house_party_roles:
+            if role.is_bot_managed():
+                house_party_role = role
+        if house_party_role is None:
+            print("error no bot default role")
         bot_account = discord.PermissionOverwrite(**{'speak': True, 'view_channel': True, 'connect': True, 'manage_channels': True})
-        perms = {'speak': True, 'view_channel': True, 'connect': False}
-        overwrite = discord.PermissionOverwrite(**perms)
+        overwrite = discord.PermissionOverwrite(**{'speak': True, 'view_channel': True, 'connect': False})
         priv_chat = await guild.create_category("private_house_channel", overwrites={guild.default_role: overwrite, house_party_role: bot_account}, reason=None)
         
     sneak_chat = discord.utils.get(guild.categories, name=f'sneak')
@@ -63,9 +67,9 @@ async def create_default_channels_for_guild(guild):
         notifications_chat = discord.utils.get(guild.categories, name=f'notifications')
         notifications = await guild.create_text_channel('who-is-in-the-house', category=notifications_chat)
     
-async def handle_multi_house_channel(guild_id):
+async def handle_multi_house_channel(guild):
     # this function will handle generating multiple broadcast channels if each one has someone in one
-    guild = GLOBAL_GUILDS[guild_id]
+    #guild = GLOBAL_GUILDS[guild_id]
     broadcast_chat = discord.utils.get(guild.categories, name=f'broadcast')
     channel = await guild.create_voice_channel('house-party', category=broadcast_chat)
     
@@ -82,6 +86,13 @@ async def remove_zero_house_channel(chan):
             break
     if len(channels) > 1:
         await chan.delete()
+        
+def getBotMainRole(guild, bot):
+    house_party_roles = guild.get_member(bot.user.id).roles
+    for bot_role in house_party_roles:
+        if bot_role.is_bot_managed():
+            return bot_role
+    return None
         
 
         

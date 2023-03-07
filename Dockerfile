@@ -8,4 +8,4 @@ WORKDIR /home/appuser/houseparty
 
 RUN python -m pip install -r requirements.txt
 
-CMD python houseparty.py
+CMD python -m discordparty

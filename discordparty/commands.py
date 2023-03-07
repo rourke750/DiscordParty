@@ -4,6 +4,8 @@ from discord.ext.commands import has_permissions, has_role
 from .utils.utils import *
 from .utils.checks import *
 
+import asyncio
+
 class DiscordPartyCommands(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
@@ -91,7 +93,13 @@ class DiscordPartyCommands(commands.Cog):
         # 1. give everyone in channel role
         # 2. set channel role
         role = await guild.create_role(name=f'{member.name}-PrivateRole')
-        house_party_role = discord.utils.get(guild.roles, name=f'houseparty')
+        house_party_roles = ctx.guild.get_member(self.bot.user.id).roles
+        for bot_role in house_party_roles:
+            if bot_role.is_bot_managed():
+                house_party_role = bot_role
+        if house_party_role is None:
+            print("error no bot default role")
+        #house_party_role = discord.utils.get(guild.roles, name=f'ChatParty')
         category = discord.utils.get(guild.categories, name=f'private_house_channel')
         perms = {'speak': True, 'view_channel': True, 'connect': True, 'use_voice_activation': True, }
         overwrite = discord.PermissionOverwrite(**perms)
@@ -107,10 +115,10 @@ class DiscordPartyCommands(commands.Cog):
         # iterate through channel members and set role then move
         tasks = []
         for member in c.members:
-            #await member.add_roles(role)
-            #await member.move_to(new_channel)
-            tasks.append(member.add_roles(role))
-            tasks.append(member.move_to(new_channel))
+            await member.add_roles(role)
+            await member.move_to(new_channel)
+            # tasks.append(member.add_roles(role))
+            #tasks.append(member.move_to(new_channel))
         await asyncio.gather(*tasks)
         
         await ctx.send('Locking channel')
