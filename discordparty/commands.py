@@ -75,7 +75,7 @@ class DiscordPartyCommands(commands.Cog):
     @commands.check(has_permission_or_role)
     async def create_command(self, ctx):
         guild = ctx.guild
-        await setup_guild(guild)
+        await setup_guild(guild, self.bot)
         await ctx.send('Finished creating channels, roles, and categories')                
 
     @commands.guild_only()

@@ -1,5 +1,7 @@
 import discord
 
+import asyncio
+
 async def setup_guild(guild, bot):
     await create_roles_for_guild(guild) # create roles for guild 
     await create_categories_for_guild(guild, bot)
@@ -96,7 +98,7 @@ def getBotMainRole(guild, bot):
         
 
         
-def delete_sub_channels_and_category(self, guild, categories):
+def delete_sub_channels_and_category(guild, categories):
     channels = []
     for cat in categories:
         for chan in cat.channels:
