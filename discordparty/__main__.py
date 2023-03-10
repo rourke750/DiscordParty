@@ -40,11 +40,13 @@ async def on_guild_join(guild):
     #GLOBAL_GUILDS[guild.id] = guild
     await setup_guild(guild, bot)
     
-def should_broadcast(cat):
-    for role in cat.changed_roles:
-        if role.name == DRole.BROADCAST_DELETE_ROLE.value or role.name == DRole.BROADCAST_ROLE.value:
-            return True
-    return False
+def should_broadcast(roles):
+    for role in roles:
+        if role.name == DRole.BROADCAST_DELETE_ROLE.value:
+            return 2
+        elif role.name == DRole.BROADCAST_ROLE.value:
+            return 1
+    return 0
 
  
 @bot.event
@@ -60,9 +62,7 @@ async def on_voice_state_update(member, before, after):
     if voice_chan_before is not None and len(voice_chan_before.members) == 0 and voice_chan_before is not None:
         # check category if it is a private chat
         cat = voice_chan_before.category
-        if cat is None:
-            return
-        if cat.name == 'private_house_channel':
+        if cat is not None and cat.name == 'private_house_channel':
             bot_role = getBotMainRole(member.guild, bot)
             for r in voice_chan_before.overwrites:
                 if type(r) is discord.Role and r.name != 'private_house_party_role' and r.name != '@everyone' and r.name != bot_role.name:
@@ -73,13 +73,12 @@ async def on_voice_state_update(member, before, after):
     if voice_chan_after is not None: 
         # Handle case where someone joined a channel that broadcasts
         # check if category exists
-        cat = voice_chan_after.category
-        if cat is None:
-            return
         # now get the permissions for the category
-        
-        
-        if should_broadcast(cat): # we want to broadcast
+        broadCastVal = should_broadcast(voice_chan_after.changed_roles)
+        if broadCastVal == 0 and voice_chan_after.category is not None:
+            broadCastVal = should_broadcast(voice_chan_after.category.changed_roles)
+        if broadCastVal > 0: 
+            # we want to broadcast
             members_len = len(voice_chan_after.members)
             if members_len == 0:
                 return
@@ -88,14 +87,15 @@ async def on_voice_state_update(member, before, after):
                 await chan.send(f'{members} are in the house together')
             else:
                 await chan.send(f'{voice_chan_after.members[0].name} has entered the chat @everyone')
-                await handle_multi_house_channel(member.guild)
-                pass
+                # check if we need to create a new channel
+                if broadCastVal == 2:
+                    await handle_multi_house_channel(member.guild)
     if voice_chan_before is not None:
         # handle case where we want to delete too many channels
         cat = voice_chan_before.category
         if cat is None:
             return
-        if should_broadcast(cat): # we want to broadcast
+        if should_broadcast(cat.changed_roles): # we want to broadcast
             members_len = len(voice_chan_before.members)
             if members_len == 0:
                 await remove_zero_house_channel(voice_chan_before)

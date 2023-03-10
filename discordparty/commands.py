@@ -4,6 +4,8 @@ from discord.ext.commands import has_permissions, has_role
 from .utils.utils import *
 from .utils.checks import *
 
+from typing import Literal
+
 import asyncio
 
 class DiscordPartyCommands(commands.Cog):
@@ -14,6 +16,7 @@ class DiscordPartyCommands(commands.Cog):
     @commands.command()
     @commands.is_owner()
     async def sync(self, ctx, all=False):
+        print('sync command')
         if not all:
             self.bot.tree.clear_commands(guild=ctx.guild)
             self.bot.tree.copy_global_to(guild=ctx.guild)
@@ -28,6 +31,25 @@ class DiscordPartyCommands(commands.Cog):
     @commands.hybrid_group(name="houseparty", description="admin command", with_app_command=True)
     async def houseparty(self, ctx):
         await ctx.send("Parent command!")
+        
+    @commands.guild_only()
+    @houseparty.group(name="admin", description="admin command", with_app_command=True)
+    @commands.check(has_permission_or_role)
+    async def admin(self, ctx):
+        await ctx.send("Parent command!")
+        
+    @commands.guild_only()
+    @admin.command(name="broadcast", description="Set channel to allow broadcasts from", with_app_command=True)
+    @commands.check(has_permission_or_role)
+    async def broadcast(self, ctx, set: Literal['set', 'unset'], channel: discord.VoiceChannel):
+        broadcast_role = discord.utils.get(ctx.guild.roles, name=DRole.BROADCAST_ROLE.value)
+        if broadcast_role not in channel.overwrites:
+            perms = {'speak': True, 'view_channel': True, 'connect': True}
+            overwrite = discord.PermissionOverwrite(**perms)
+            await channel.set_permissions(broadcast_role, overwrite=overwrite)
+            await ctx.send("Added channel to broadcast!")
+        else:
+            await ctx.send("Channel is already added")
         
     @commands.guild_only()
     @houseparty.group(name="refresh", description="allow refreshing of channels", with_app_command=True)
@@ -45,7 +67,7 @@ class DiscordPartyCommands(commands.Cog):
     @commands.guild_only()
     @commands.check(has_permission_or_role)
     async def add_houseparty_admin(self, ctx, member: discord.Member, enable: bool):
-        admin_role = discord.utils.get(ctx.guild.roles, name=f'houseparty-admin')
+        admin_role = discord.utils.get(ctx.guild.roles, name=DRole.ADMIN_ROLE.value)
         if enable:
             await member.add_roles(admin_role)
             msg = f'Added member ${member.name} to admin'
