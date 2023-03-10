@@ -1,5 +1,7 @@
 import discord
 
+from ..mappings.mapping import DRole
+
 import asyncio
 
 async def setup_guild(guild, bot):
@@ -10,10 +12,7 @@ async def setup_guild(guild, bot):
 async def create_categories_for_guild(guild, bot):
     priv_chat = discord.utils.get(guild.categories, name=f'private_house_channel')
     if priv_chat is None:
-        house_party_roles = guild.get_member(bot.user.id).roles
-        for role in house_party_roles:
-            if role.is_bot_managed():
-                house_party_role = role
+        house_party_role = getBotMainRole(guild, bot)
         if house_party_role is None:
             print("error no bot default role")
         bot_account = discord.PermissionOverwrite(**{'speak': True, 'view_channel': True, 'connect': True, 'manage_channels': True})
@@ -30,7 +29,15 @@ async def create_categories_for_guild(guild, bot):
     if broadcast_chat is None:
         perms = {'speak': True, 'view_channel': True, 'connect': True}
         overwrite = discord.PermissionOverwrite(**perms)
-        broadcast_chat = await guild.create_category("broadcast", overwrites={guild.default_role: overwrite}, reason=None)
+        broadcast_delete_role = discord.utils.get(guild.roles, name=DRole.BROADCAST_DELETE_ROLE.value)
+        broadcast_chat = await guild.create_category('broadcast', overwrites={guild.default_role: overwrite, broadcast_delete_role: overwrite}, reason=None)
+        
+    # handle if broadcast_chat wasnt generated a role from earlier version
+    broadcast_delete_role = discord.utils.get(guild.roles, name=DRole.BROADCAST_DELETE_ROLE.value)
+    if broadcast_delete_role not in broadcast_chat.overwrites:
+        perms = {'speak': True, 'view_channel': True, 'connect': True}
+        overwrite = discord.PermissionOverwrite(**perms)
+        await broadcast_chat.set_permissions(broadcast_delete_role, overwrite=overwrite)
         
     notification_chat = discord.utils.get(guild.categories, name='notifications')
     if notification_chat is None:
@@ -39,19 +46,20 @@ async def create_categories_for_guild(guild, bot):
         notification_chat = await guild.create_category("notifications", overwrites={guild.default_role: overwrite}, reason=None)
 
 async def create_roles_for_guild(guild):
-    #role = discord.utils.get(guild.roles, name=f'default')
-    #if role is None:
-    #    role = await guild.create_role(name=f'default')
-    #    perms = {'speak': True, 'view_channel': True, 'connect': False}
-    # remove the everyone permissions and set to none
-    #await guild.default_role.edit(permissions=perms = {'speak': True, 'view_channel': True, 'connect': False})
-    private_house_role = discord.utils.get(guild.roles, name=f'private_house_party_role')
+    private_house_role = discord.utils.get(guild.roles, name=DRole.PRIVATE_ROLE.value)
     if private_house_role is None:
-        private_house_role = await guild.create_role(name=f'private_house_party_role')
+        private_house_role = await guild.create_role(name=DRole.PRIVATE_ROLE.value)
         
-    admin_role = discord.utils.get(guild.roles, name=f'houseparty-admin')
+    admin_role = discord.utils.get(guild.roles, name=DRole.ADMIN_ROLE.value)
     if admin_role is None:
-        admin_role = await guild.create_role(name=f'houseparty-admin')
+        admin_role = await guild.create_role(name=DRole.ADMIN_ROLE.value)
+        
+    # let's create two new roles 1 for broadcasts and one if channel should be deleted if no one in channel
+    if discord.utils.get(guild.roles, name=DRole.BROADCAST_ROLE.value) is None:
+        await guild.create_role(name=DRole.BROADCAST_ROLE.value)
+        
+    if discord.utils.get(guild.roles, name=DRole.BROADCAST_DELETE_ROLE.value) is None:
+        await guild.create_role(name=DRole.BROADCAST_DELETE_ROLE.value)
         
 async def create_default_channels_for_guild(guild):
     channel = discord.utils.get(guild.channels, name=f'house-party')
@@ -77,15 +85,11 @@ async def handle_multi_house_channel(guild):
     
 async def remove_zero_house_channel(chan):
     # check if there is more than one guild channel and if there is delete this
-    guild = GLOBAL_GUILDS[chan.guild.id]
+    guild = chan.guild
     broadcast_chat = discord.utils.get(guild.categories, name=f'broadcast')
     channels = None
-    for cat_tuple in guild.by_category():
-        if cat_tuple[0] is None:
-            continue
-        if broadcast_chat.id == cat_tuple[0].id:
-            channels = cat_tuple[1]
-            break
+    if chan.category is not None:
+        channels = chan.category.channels
     if len(channels) > 1:
         await chan.delete()
         

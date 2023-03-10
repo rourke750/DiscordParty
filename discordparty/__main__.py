@@ -5,6 +5,7 @@ from discord.ext.commands import has_permissions, has_role
 
 from .commands import DiscordPartyCommands
 from .utils.utils import *
+from .mappings.mapping import DRole
 
 import os
 from dotenv import load_dotenv
@@ -39,7 +40,13 @@ async def on_guild_join(guild):
     #GLOBAL_GUILDS[guild.id] = guild
     await setup_guild(guild, bot)
     
-    
+def should_broadcast(cat):
+    for role in cat.changed_roles:
+        if role.name == DRole.BROADCAST_DELETE_ROLE.value or role.name == DRole.BROADCAST_ROLE.value:
+            return True
+    return False
+
+ 
 @bot.event
 async def on_voice_state_update(member, before, after):
     user_name = member.name
@@ -69,7 +76,10 @@ async def on_voice_state_update(member, before, after):
         cat = voice_chan_after.category
         if cat is None:
             return
-        if cat.name == 'broadcast': # we want to broadcast
+        # now get the permissions for the category
+        
+        
+        if should_broadcast(cat): # we want to broadcast
             members_len = len(voice_chan_after.members)
             if members_len == 0:
                 return
@@ -85,7 +95,7 @@ async def on_voice_state_update(member, before, after):
         cat = voice_chan_before.category
         if cat is None:
             return
-        if cat.name == 'broadcast': # we want to broadcast
+        if should_broadcast(cat): # we want to broadcast
             members_len = len(voice_chan_before.members)
             if members_len == 0:
                 await remove_zero_house_channel(voice_chan_before)
