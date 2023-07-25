@@ -7,10 +7,12 @@ from .commands import DiscordPartyCommands
 from .utils.utils import *
 from .mappings.mapping import DRole
 from .db import db
+from .events import events
 
 import os
 from dotenv import load_dotenv
 import datetime
+import logging
 
 import asyncio
 
@@ -22,7 +24,8 @@ TOKEN = os.getenv("DISCORD_TOKEN")
 description = '''Commands to use houseparty features'''
 
 intents = discord.Intents.all()
-#GLOBAL_GUILDS = {}
+
+discord.utils.setup_logging(level=logging.INFO)
 
 bot = commands.Bot(command_prefix='/', description=description, intents=intents)
 
@@ -36,6 +39,7 @@ async def on_ready():
         #GLOBAL_GUILDS[guild.id] = guild
         tasks.append(setup_guild(guild, bot))
     await asyncio.gather(*tasks)
+    events.enable_events()
         
 @bot.event
 async def on_guild_join(guild):
@@ -71,7 +75,7 @@ async def on_voice_state_update(member, before, after):
                     await r.delete()
             await voice_chan_before.delete()
     
-    chan = discord.utils.get(member.guild.channels, name=f'who-is-in-the-house')
+    chan = get_broadcast_channel(member.guild)
     if voice_chan_after is not None: 
         # Handle case where someone joined a channel that broadcasts
         # check if category exists
@@ -115,4 +119,5 @@ async def on_voice_state_update(member, before, after):
                 db.update_end_time(member.id, datetime.datetime.timestamp(datetime.datetime.now()))
 
 asyncio.run(bot.add_cog(DiscordPartyCommands(bot)))
+events.set_bot(bot)
 bot.run(TOKEN)

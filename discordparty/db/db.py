@@ -5,6 +5,7 @@ import sqlite3
 import os
 from dotenv import load_dotenv
 import datetime
+import logging
 
 load_dotenv()
 
@@ -31,26 +32,27 @@ CREATE_TRIGGER_TIME_MOVEMENT = '''
 
 INSERT_TIME_FOR_ID = '''INSERT INTO time_record ('discord_id', 'start') VALUES (?, ?);'''
 UPDATE_TIME_FOR_ID = '''UPDATE time_record SET end = ? where end IS NULL AND discord_id = ?;'''
-GET_TIME_FOR_ID = '''SELECT start, end FROM time_record WHERE discord_id = ? and start >= ? and start <= ?;'''
+GET_ACTIVE_TIME_FOR_ID = '''SELECT start, end FROM time_record WHERE discord_id = ? and start >= ? and start <= ?;'''
+GET_ACTIVE_TIME = '''SELECT discord_id, start, end FROM time_record;'''
 
 def insert_time(discord_id, start):
-    print('inserting time for %s %d' % (discord_id, start))
+    logging.debug('inserting time for %s %d' % (discord_id, start))
     with closing(con.cursor()) as cur:
         values = (discord_id, int(start))
         cur.execute(INSERT_TIME_FOR_ID, values)
         con.commit()
         
 def update_end_time(discord_id, end):
-    print('updating time for %s %d' % (discord_id, end))
+    logging.debug('updating time for %s %d' % (discord_id, end))
     with closing(con.cursor()) as cur:
         values = (int(end), discord_id)
         cur.execute(UPDATE_TIME_FOR_ID, values)
         con.commit()
         
-def get_total_time_minutes(discord_id, start, end):
+def get_total_active_time_minutes(discord_id, start, end):
     with closing(con.cursor()) as cur:
         values = (discord_id, int(start), int(end))
-        cur.execute(GET_TIME_FOR_ID, values)
+        cur.execute(GET_ACTIVE_TIME_FOR_ID, values)
         rows = cur.fetchall()
         t = 0
         for row in rows:
@@ -60,14 +62,33 @@ def get_total_time_minutes(discord_id, start, end):
                 t += int(datetime.datetime.timestamp(datetime.datetime.now())) - row[0]
         t = int(t / 60) # convert to minutes
         return t
+        
+# returns a map of current session from discord_id to seconds
+def get_current_session_time():
+    with closing(con.cursor()) as cur:
+        cur.execute(GET_ACTIVE_TIME)
+        rows = cur.fetchall()
+        t = {}
+        for row in rows:
+            discord_id = row[0]
+            start = row[1]
+            end = row[2]
+            if end is None:
+                end = int(datetime.datetime.timestamp(datetime.datetime.now()))
+            # check if discord id is present and if it is not add it to map
+            if discord_id not in t:
+                t[discord_id] = 0
+            # now add time to existing
+            t[discord_id] = t[discord_id] + end - start
+        return t
 
 def create_tables():
     with closing(con.cursor()) as cur:
-        print('creating tables')
+        logging.debug('creating tables')
         cur.execute(CREATE_TIME_TABLE)
         cur.execute(CREATE_VERSION_TABLE)
         cur.execute(CREATE_TIME_ARCIVAL_TABLE)
-        print('created tables')
+        logging.debug('created tables')
         
 def create_triggers():
     with closing(con.cursor()) as cur:

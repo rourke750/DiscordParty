@@ -42,7 +42,7 @@ class DiscordPartyCommands(commands.Cog):
         end = int(datetime.datetime.timestamp(datetime.datetime.now()))
         sub = datetime.datetime.now().replace(hour=0, minute=0, second=0, microsecond=0) - datetime.timedelta(days=datetime.datetime.now().weekday(), hours=0, minutes=0, seconds=0)
         start = int(datetime.datetime.timestamp(sub))
-        total_time = db.get_total_time_minutes(user_id, start, end)
+        total_time = db.get_total_active_time_minutes(user_id, start, end)
         await ctx.send('Time since Monday %d minutes' % total_time)
         
     @commands.guild_only()

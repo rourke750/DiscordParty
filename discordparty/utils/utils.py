@@ -93,14 +93,15 @@ async def remove_zero_house_channel(chan):
     if len(channels) > 1:
         await chan.delete()
         
+def get_broadcast_channel(guild):
+    chan = discord.utils.get(guild.channels, name=f'who-is-in-the-house')
+        
 def getBotMainRole(guild, bot):
     house_party_roles = guild.get_member(bot.user.id).roles
     for bot_role in house_party_roles:
         if bot_role.is_bot_managed():
             return bot_role
     return None
-        
-
         
 def delete_sub_channels_and_category(guild, categories):
     channels = []
