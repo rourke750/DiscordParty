@@ -3,6 +3,9 @@ from discord.ext.commands import has_permissions, has_role
 
 from .utils.utils import *
 from .utils.checks import *
+from .db import db
+
+import datetime
 
 from typing import Literal
 
@@ -31,6 +34,16 @@ class DiscordPartyCommands(commands.Cog):
     @commands.hybrid_group(name="houseparty", description="admin command", with_app_command=True)
     async def houseparty(self, ctx):
         await ctx.send("Parent command!")
+        
+    @commands.guild_only()
+    @houseparty.command(name="time", description="Command to get all time this week", with_app_command=True)
+    async def time(self, ctx: commands.Context):
+        user_id = ctx.author.id
+        end = int(datetime.datetime.timestamp(datetime.datetime.now()))
+        sub = datetime.datetime.now().replace(hour=0, minute=0, second=0, microsecond=0) - datetime.timedelta(days=datetime.datetime.now().weekday(), hours=0, minutes=0, seconds=0)
+        start = int(datetime.datetime.timestamp(sub))
+        total_time = db.get_total_time_minutes(user_id, start, end)
+        await ctx.send('Time since Monday %d minutes' % total_time)
         
     @commands.guild_only()
     @houseparty.group(name="admin", description="admin command", with_app_command=True)
@@ -98,8 +111,8 @@ class DiscordPartyCommands(commands.Cog):
     async def create_command(self, ctx):
         guild = ctx.guild
         await setup_guild(guild, self.bot)
-        await ctx.send('Finished creating channels, roles, and categories')                
-
+        await ctx.send('Finished creating channels, roles, and categories')
+    
     @commands.guild_only()
     @houseparty.command(name="private", description="Command to lock your channel with the people inside", with_app_command=True)
     async def private(self, ctx: commands.Context):

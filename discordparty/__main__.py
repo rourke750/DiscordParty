@@ -6,9 +6,11 @@ from discord.ext.commands import has_permissions, has_role
 from .commands import DiscordPartyCommands
 from .utils.utils import *
 from .mappings.mapping import DRole
+from .db import db
 
 import os
 from dotenv import load_dotenv
+import datetime
 
 import asyncio
 
@@ -90,15 +92,27 @@ async def on_voice_state_update(member, before, after):
                 # check if we need to create a new channel
                 if broadCastVal == 2:
                     await handle_multi_house_channel(member.guild)
+            # now lets track the persons time, need to make sure previous voice channel was not a broadcast
+            not_previous_tracked = voice_chan_before is not None and voice_chan_before.category is not None and not should_broadcast(voice_chan_before.category.changed_roles) > 0
+            not_in_previous_channel = voice_chan_before is None or voice_chan_before.category is None
+            if not_in_previous_channel or not_previous_tracked:
+                db.insert_time(member.id, datetime.datetime.timestamp(datetime.datetime.now()))
+                
+        
     if voice_chan_before is not None:
         # handle case where we want to delete too many channels
         cat = voice_chan_before.category
         if cat is None:
             return
-        if should_broadcast(cat.changed_roles): # we want to broadcast
+        if should_broadcast(cat.changed_roles): # if we are greater than zero than they came from a voice channel we are tracking
             members_len = len(voice_chan_before.members)
             if members_len == 0:
                 await remove_zero_house_channel(voice_chan_before)
+            # lets check if the after chan is none or not a tracked channel
+            moved_to_untracked_channel = voice_chan_after is not None and voice_chan_after.category is not None and should_broadcast(voice_chan_after.category.changed_roles) == 0
+            move_to_no_channel = voice_chan_after is None or voice_chan_after.category is None
+            if moved_to_untracked_channel or move_to_no_channel:
+                db.update_end_time(member.id, datetime.datetime.timestamp(datetime.datetime.now()))
 
 asyncio.run(bot.add_cog(DiscordPartyCommands(bot)))
 bot.run(TOKEN)

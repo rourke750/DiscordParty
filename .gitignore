@@ -131,3 +131,5 @@ dmypy.json
 build.txt
 oauth.txt
 updateCommands.py
+docker-compose.yaml
+discord_party.db
