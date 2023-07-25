@@ -37,13 +37,19 @@ class DiscordPartyCommands(commands.Cog):
         
     @commands.guild_only()
     @houseparty.command(name="time", description="Command to get all time this week", with_app_command=True)
-    async def time(self, ctx: commands.Context):
+    async def time(self, ctx: commands.Context, current=False):
         user_id = ctx.author.id
         end = int(datetime.datetime.timestamp(datetime.datetime.now()))
-        sub = datetime.datetime.now().replace(hour=0, minute=0, second=0, microsecond=0) - datetime.timedelta(days=datetime.datetime.now().weekday(), hours=0, minutes=0, seconds=0)
+        current_week = datetime.datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        sub = current_week - datetime.timedelta(days=datetime.datetime.now().weekday(), hours=0, minutes=0, seconds=0)
         start = int(datetime.datetime.timestamp(sub))
         total_time = db.get_total_active_time_minutes(user_id, start, end)
-        await ctx.send('Time since Monday %d minutes' % total_time)
+        if not current:
+            print(sub)
+            total_time = total_time + db.get_arcival_time_minutes(user_id, sub)
+            await ctx.send('Time since Monday %d minutes' % total_time)
+        else:
+            await ctx.send('Current time in voice %d minutes' % total_time)
         
     @commands.guild_only()
     @houseparty.group(name="admin", description="admin command", with_app_command=True)

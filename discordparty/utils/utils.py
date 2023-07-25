@@ -94,7 +94,7 @@ async def remove_zero_house_channel(chan):
         await chan.delete()
         
 def get_broadcast_channel(guild):
-    chan = discord.utils.get(guild.channels, name=f'who-is-in-the-house')
+    return discord.utils.get(guild.channels, name=f'who-is-in-the-house')
         
 def getBotMainRole(guild, bot):
     house_party_roles = guild.get_member(bot.user.id).roles

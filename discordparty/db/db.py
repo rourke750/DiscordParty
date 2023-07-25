@@ -34,6 +34,7 @@ INSERT_TIME_FOR_ID = '''INSERT INTO time_record ('discord_id', 'start') VALUES (
 UPDATE_TIME_FOR_ID = '''UPDATE time_record SET end = ? where end IS NULL AND discord_id = ?;'''
 GET_ACTIVE_TIME_FOR_ID = '''SELECT start, end FROM time_record WHERE discord_id = ? and start >= ? and start <= ?;'''
 GET_ACTIVE_TIME = '''SELECT discord_id, start, end FROM time_record;'''
+GET_ARCIVED_TIME = '''SELECT IFNULL(total_time, 0) FROM time_record_arcival WHERE discord_id = ? AND week_num = ?;'''
 
 def insert_time(discord_id, start):
     logging.debug('inserting time for %s %d' % (discord_id, start))
@@ -62,6 +63,13 @@ def get_total_active_time_minutes(discord_id, start, end):
                 t += int(datetime.datetime.timestamp(datetime.datetime.now())) - row[0]
         t = int(t / 60) # convert to minutes
         return t
+        
+def get_arcival_time_minutes(discord_id, week):
+    with closing(con.cursor()) as cur:
+        values = (discord_id, week)
+        cur.execute(GET_ARCIVED_TIME, values)
+        rows = cur.fetchone()
+        return int(rows[0] / 60)
         
 # returns a map of current session from discord_id to seconds
 def get_current_session_time():
