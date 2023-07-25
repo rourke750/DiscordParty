@@ -69,6 +69,8 @@ def get_arcival_time_minutes(discord_id, week):
         values = (discord_id, week)
         cur.execute(GET_ARCIVED_TIME, values)
         rows = cur.fetchone()
+        if rows is None:
+            return 0
         return int(rows[0] / 60)
         
 # returns a map of current session from discord_id to seconds
