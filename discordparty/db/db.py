@@ -13,6 +13,21 @@ PATH = os.getenv("DISCORD_DB_PATH")
 con = sqlite3.connect(os.path.join(PATH, 'discord_party.db'))
 
 CREATE_TIME_TABLE = 'CREATE TABLE IF NOT EXISTS time_record (discord_id INT, start INT, end INT);'
+CREATE_VERSION_TABLE = 'CREATE TABLE IF NOT EXISTS versions (version INT, timestamp INT);'
+CREATE_TIME_ARCIVAL_TABLE = 'CREATE TABLE IF NOT EXISTS time_record_arcival (discord_id INT, week_num INT, total_time INT, PRIMARY KEY(discord_id, week_num));'
+
+# create trigger for moving data from one time_record to consolidated
+CREATE_TRIGGER_TIME_MOVEMENT = '''
+            CREATE TRIGGER update_time_record_arcival UPDATE OF end ON time_record 
+              BEGIN
+                INSERT INTO time_record_arcival (discord_id, week_num, total_time) 
+                VALUES (old.discord_id, datetime(new.start, 'unixepoch', 'weekday 1', '-7 day', 'start of day'), (SELECT IFNULL(sum(end - start), 0) as s FROM time_record WHERE discord_id = old.discord_id AND end IS NOT NULL) + new.end - new.start)
+                on CONFLICT(discord_id, week_num) DO UPDATE SET
+                    total_time = total_time + excluded.total_time
+                    WHERE discord_id = excluded.discord_id AND week_num = excluded.week_num;
+                DELETE FROM time_record WHERE discord_id = old.discord_id;
+              END;
+'''
 
 INSERT_TIME_FOR_ID = '''INSERT INTO time_record ('discord_id', 'start') VALUES (?, ?);'''
 UPDATE_TIME_FOR_ID = '''UPDATE time_record SET end = ? where end IS NULL AND discord_id = ?;'''
@@ -50,7 +65,14 @@ def create_tables():
     with closing(con.cursor()) as cur:
         print('creating tables')
         cur.execute(CREATE_TIME_TABLE)
+        cur.execute(CREATE_VERSION_TABLE)
+        cur.execute(CREATE_TIME_ARCIVAL_TABLE)
         print('created tables')
-    
+        
+def create_triggers():
+    with closing(con.cursor()) as cur:
+        cur.execute('DROP TRIGGER IF EXISTS update_time_record_arcival;')
+        cur.execute(CREATE_TRIGGER_TIME_MOVEMENT)
+        
 def create_indexes():
     pass
