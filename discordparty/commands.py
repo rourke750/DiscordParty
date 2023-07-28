@@ -45,11 +45,26 @@ class DiscordPartyCommands(commands.Cog):
         start = int(datetime.datetime.timestamp(sub))
         total_time = db.get_total_active_time_minutes(user_id, start, end)
         if not current:
-            print(sub)
             total_time = total_time + db.get_arcival_time_minutes(user_id, sub)
             await ctx.send('Time since Monday %d minutes' % total_time)
         else:
             await ctx.send('Current time in voice %d minutes' % total_time)
+            
+    @commands.guild_only()
+    @houseparty.command(name="wave", description="Command to wave to another user and get them to join", with_app_command=True)
+    async def wave(self, ctx: commands.Context, user: discord.Member):
+        command_user = ctx.author
+        # check if the user is in a voice channel
+        if command_user.voice is None or command_user.voice.channel is None:
+            await ctx.send('You must be in a voice channel to run this command', ephemeral=True)
+            return
+            
+        jump_url = command_user.voice.channel.jump_url
+        await ctx.send('Waved to %s' % user.display_name, ephemeral=True)
+        user_channel = user.dm_channel
+        if user_channel is None:
+            user_channel = await user.create_dm()
+        await user_channel.send('%s waved to you %s' % (command_user.display_name, jump_url))
         
     @commands.guild_only()
     @houseparty.group(name="admin", description="admin command", with_app_command=True)
