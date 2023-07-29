@@ -1,3 +1,4 @@
+from discord import app_commands
 from discord.ext import commands
 from discord.ext.commands import has_permissions, has_role
 
@@ -5,6 +6,7 @@ from .mappings.mapping import DRole
 from .utils.utils import *
 from .utils.checks import *
 from .db import db
+from .views import views
 
 import datetime
 
@@ -37,6 +39,12 @@ class DiscordPartyCommands(commands.Cog):
         await ctx.send("Parent command!")
         
     @commands.guild_only()
+    @commands.hybrid_group(name="chatpartyadmin", description="admin command", with_app_command=True)
+    @app_commands.default_permissions(manage_guild=True)
+    async def chatpartyadmin(self, ctx):
+        await ctx.send("Parent command!")
+        
+    @commands.guild_only()
     @chatparty.command(name="time", description="Command to get all time this week", with_app_command=True)
     async def time(self, ctx: commands.Context, current=False):
         user_id = ctx.author.id
@@ -65,16 +73,10 @@ class DiscordPartyCommands(commands.Cog):
         user_channel = user.dm_channel
         if user_channel is None:
             user_channel = await user.create_dm()
-        await user_channel.send('%s waved to you %s' % (command_user.display_name, jump_url))
+        await user_channel.send('%s waved to you %s' % (command_user.display_name, jump_url), view=views.SupressWave())
         
     @commands.guild_only()
-    @chatparty.group(name="admin", description="admin command", with_app_command=True)
-    @commands.check(has_permission_or_role)
-    async def admin(self, ctx):
-        await ctx.send("Parent command!")
-        
-    @commands.guild_only()
-    @admin.command(name="broadcast", description="Set channel to allow broadcasts from", with_app_command=True)
+    @chatpartyadmin.command(name="broadcast", description="Set channel to allow broadcasts from", with_app_command=True)
     @commands.check(has_permission_or_role)
     async def broadcast(self, ctx, set: Literal['set', 'unset'], channel: discord.VoiceChannel):
         broadcast_role = discord.utils.get(ctx.guild.roles, name=DRole.BROADCAST_ROLE.value)
@@ -87,13 +89,13 @@ class DiscordPartyCommands(commands.Cog):
             await ctx.send("Channel is already added")
         
     @commands.guild_only()
-    @chatparty.group(name="refresh", description="allow refreshing of channels", with_app_command=True)
+    @chatpartyadmin.group(name="refresh", description="allow refreshing of channels", with_app_command=True)
     @commands.check(has_permission_or_role)
     async def refresh(self, ctx):
         await ctx.send("Parent command!")
         
     @commands.guild_only()
-    @chatparty.group(name="config", description="allow modifying chat party configuration", with_app_command=True)
+    @chatpartyadmin.group(name="config", description="allow modifying chat party configuration", with_app_command=True)
     @commands.check(has_permission_or_role)
     async def config(self, ctx):
         await ctx.send("Parent command!")
@@ -182,6 +184,7 @@ class DiscordPartyCommands(commands.Cog):
         
     @create_command.error
     @clear_command.error
+    @add_houseparty_admin.error
     async def command_error(self, ctx, error):
         if isinstance(error, commands.NotOwner):
             await ctx.send('Only the owner of this bot can run this command')
