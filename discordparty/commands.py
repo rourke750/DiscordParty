@@ -2,11 +2,13 @@ from discord import app_commands
 from discord.ext import commands
 from discord.ext.commands import has_permissions, has_role
 
+from typing import Literal
+
 from .mappings.mapping import DRole
 from .utils.utils import *
 from .utils.checks import *
+from .utils import quiz
 from .db import db
-from .views import views
 
 import datetime
 
@@ -179,8 +181,13 @@ class DiscordPartyCommands(commands.Cog):
             # tasks.append(member.add_roles(role))
             #tasks.append(member.move_to(new_channel))
         await asyncio.gather(*tasks)
-        
         await ctx.send('Locking channel')
+        
+    @commands.guild_only()
+    @chatparty.command(name="quiz", description="Quiz command", with_app_command=True)
+    async def quiz(self, ctx: commands.Context, action: Literal['start']):
+        message = await ctx.send('starting quiz')
+        await quiz.track_quiz(message)
         
     @create_command.error
     @clear_command.error
