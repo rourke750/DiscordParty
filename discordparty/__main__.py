@@ -111,7 +111,7 @@ async def on_voice_state_update(member, before, after):
         cat = voice_chan_before.category
         if cat is None:
             return
-        if should_broadcast(cat.changed_roles): # if we are greater than zero than they came from a voice channel we are tracking
+        if should_broadcast(cat.changed_roles) == 2: # if we are greater than zero than they came from a voice channel we are tracking
             members_len = len(voice_chan_before.members)
             if members_len == 0:
                 await remove_zero_house_channel(voice_chan_before)

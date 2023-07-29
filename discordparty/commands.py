@@ -1,6 +1,7 @@
 from discord.ext import commands
 from discord.ext.commands import has_permissions, has_role
 
+from .mappings.mapping import DRole
 from .utils.utils import *
 from .utils.checks import *
 from .db import db
@@ -31,12 +32,12 @@ class DiscordPartyCommands(commands.Cog):
             await self.bot.tree.sync()
             
     @commands.guild_only()
-    @commands.hybrid_group(name="houseparty", description="admin command", with_app_command=True)
-    async def houseparty(self, ctx):
+    @commands.hybrid_group(name="chatparty", description="admin command", with_app_command=True)
+    async def chatparty(self, ctx):
         await ctx.send("Parent command!")
         
     @commands.guild_only()
-    @houseparty.command(name="time", description="Command to get all time this week", with_app_command=True)
+    @chatparty.command(name="time", description="Command to get all time this week", with_app_command=True)
     async def time(self, ctx: commands.Context, current=False):
         user_id = ctx.author.id
         end = int(datetime.datetime.timestamp(datetime.datetime.now()))
@@ -51,7 +52,7 @@ class DiscordPartyCommands(commands.Cog):
             await ctx.send('Current time in voice %d minutes' % total_time)
             
     @commands.guild_only()
-    @houseparty.command(name="wave", description="Command to wave to another user and get them to join", with_app_command=True)
+    @chatparty.command(name="wave", description="Command to wave to another user and get them to join", with_app_command=True)
     async def wave(self, ctx: commands.Context, user: discord.Member):
         command_user = ctx.author
         # check if the user is in a voice channel
@@ -67,7 +68,7 @@ class DiscordPartyCommands(commands.Cog):
         await user_channel.send('%s waved to you %s' % (command_user.display_name, jump_url))
         
     @commands.guild_only()
-    @houseparty.group(name="admin", description="admin command", with_app_command=True)
+    @chatparty.group(name="admin", description="admin command", with_app_command=True)
     @commands.check(has_permission_or_role)
     async def admin(self, ctx):
         await ctx.send("Parent command!")
@@ -86,18 +87,18 @@ class DiscordPartyCommands(commands.Cog):
             await ctx.send("Channel is already added")
         
     @commands.guild_only()
-    @houseparty.group(name="refresh", description="allow refreshing of channels", with_app_command=True)
+    @chatparty.group(name="refresh", description="allow refreshing of channels", with_app_command=True)
     @commands.check(has_permission_or_role)
     async def refresh(self, ctx):
         await ctx.send("Parent command!")
         
     @commands.guild_only()
-    @houseparty.group(name="config", description="allow modifying house party configuration", with_app_command=True)
+    @chatparty.group(name="config", description="allow modifying chat party configuration", with_app_command=True)
     @commands.check(has_permission_or_role)
     async def config(self, ctx):
         await ctx.send("Parent command!")
         
-    @config.command(name="set_admin", description="sets a user as admin or not for houseparty", with_app_command=True)
+    @config.command(name="set_admin", description="sets a user as admin or not for chatparty", with_app_command=True)
     @commands.guild_only()
     @commands.check(has_permission_or_role)
     async def add_houseparty_admin(self, ctx, member: discord.Member, enable: bool):
@@ -111,7 +112,7 @@ class DiscordPartyCommands(commands.Cog):
         await ctx.send(msg)
             
         
-    @refresh.command(name="clear", description="clear all house party related channels", with_app_command=True)
+    @refresh.command(name="clear", description="clear all chat party related channels", with_app_command=True)
     @commands.guild_only()
     @commands.check(has_permission_or_role)
     async def clear_command(self, ctx):
@@ -135,7 +136,7 @@ class DiscordPartyCommands(commands.Cog):
         await ctx.send('Finished creating channels, roles, and categories')
     
     @commands.guild_only()
-    @houseparty.command(name="private", description="Command to lock your channel with the people inside", with_app_command=True)
+    @chatparty.command(name="private", description="Command to lock your channel with the people inside", with_app_command=True)
     async def private(self, ctx: commands.Context):
         guild = ctx.guild
         user_id = ctx.author.id
@@ -164,7 +165,7 @@ class DiscordPartyCommands(commands.Cog):
         #await new_channel.set_permissions(role, reason='Temp private channel', overwrite=overwrite)
         
         # set the private_house_party_role so we can delete this later
-        private_house_role = discord.utils.get(guild.roles, name='private_house_party_role')
+        private_house_role = discord.utils.get(guild.roles, name=PRIVATE_ROLE)
         overwrite = discord.PermissionOverwrite()
         await new_channel.set_permissions(private_house_role, reason='Temp role for deleting channel when done', overwrite=overwrite)
         

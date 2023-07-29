@@ -15,7 +15,8 @@ async def notify_hour():
     time_mapping = db.get_current_session_time()
     for discord_id in time_mapping:
         total_minutes = int(time_mapping[discord_id] / 60)
-        if total_minutes >= 60 and total_minutes < 60 + NOTIFY_MINUTES:
+        condition_minutes = (max(0, total_minutes - NOTIFY_MINUTES) % 60) + NOTIFY_MINUTES + 1
+        if condition_minutes >= 60 and condition_minutes < 60 + NOTIFY_MINUTES:
             # send message 
             user = bot.get_user(discord_id)
             if user is None:
