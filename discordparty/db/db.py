@@ -16,6 +16,7 @@ con = sqlite3.connect(os.path.join(PATH, 'discord_party.db'))
 CREATE_TIME_TABLE = 'CREATE TABLE IF NOT EXISTS time_record (discord_id INT, start INT, end INT);'
 CREATE_VERSION_TABLE = 'CREATE TABLE IF NOT EXISTS versions (version INT, timestamp INT);'
 CREATE_TIME_ARCIVAL_TABLE = 'CREATE TABLE IF NOT EXISTS time_record_arcival (discord_id INT, week_num INT, total_time INT, PRIMARY KEY(discord_id, week_num));'
+CREATE_MUTE_TABLE = 'CREATE TABLE IF NOT EXISTS mute_record (discord_id INT, expiry INT, PRIMARY KEY(discord_id));'
 
 # create trigger for moving data from one time_record to consolidated
 CREATE_TRIGGER_TIME_MOVEMENT = '''
@@ -32,9 +33,16 @@ CREATE_TRIGGER_TIME_MOVEMENT = '''
 
 INSERT_TIME_FOR_ID = '''INSERT INTO time_record ('discord_id', 'start') VALUES (?, ?);'''
 UPDATE_TIME_FOR_ID = '''UPDATE time_record SET end = ? where end IS NULL AND discord_id = ?;'''
+
 GET_ACTIVE_TIME_FOR_ID = '''SELECT start, end FROM time_record WHERE discord_id = ? and start >= ? and start <= ?;'''
 GET_ACTIVE_TIME = '''SELECT discord_id, start, end FROM time_record;'''
 GET_ARCIVED_TIME = '''SELECT IFNULL(total_time, 0) FROM time_record_arcival WHERE discord_id = ? AND week_num = ?;'''
+
+INSERT_USER_MUTED = '''INSERT INTO mute_record('discord_id', 'expiry') VALUES (?, ?);'''
+UPDATE_USER_MUTED = '''UPDATE mute_record SET expiry = ? WHERE discord_id = ?;'''
+DELETE_USER_MUTED = '''DELETE FROM mute_record WHERE discord_id = ?;'''
+IS_USER_MUTED = '''SELECT expiry FROM mute_record WHERE discord_id = ?;''';
+GET_ALL_EXPIRED_MUTES = '''SELECT discord_id FROM mute_record WHERE expiry != -1 AND expiry < ?;'''
 
 def insert_time(discord_id, start):
     logging.debug('inserting time for %s %d' % (discord_id, start))
@@ -42,6 +50,48 @@ def insert_time(discord_id, start):
         values = (discord_id, int(start))
         cur.execute(INSERT_TIME_FOR_ID, values)
         con.commit()
+        
+def insert_user_muted(discord_id, expiry):
+    with closing(con.cursor()) as cur:
+        values = (discord_id, int(expiry))
+        cur.execute(INSERT_USER_MUTED, values)
+        con.commit()
+        
+def update_user_muted(discord_id, expiry):
+    with closing(con.cursor()) as cur:
+        values = (int(expiry), discord_id)
+        cur.execute(UPDATE_USER_MUTED, values)
+        con.commit()
+        
+def delete_user_muted(discord_id):
+    with closing(con.cursor()) as cur:
+        values = (discord_id,)
+        cur.execute(DELETE_USER_MUTED, values)
+        con.commit()
+        
+def delete_users_muted(discord_ids):
+    with closing(con.cursor()) as cur:
+        values = [(discord_id,) for discord_id in discord_ids]
+        cur.executemany(DELETE_USER_MUTED, values)
+        con.commit()
+        
+def get_user_muted(discord_id):
+    with closing(con.cursor()) as cur:
+        values = (discord_id,)
+        cur.execute(IS_USER_MUTED, values)
+        row = cur.fetchone()
+        if row is None:
+            return None
+        return row[0]
+        
+def get_all_user_muted_expired(t):
+    with closing(con.cursor()) as cur:
+        values = (t,)
+        cur.execute(GET_ALL_EXPIRED_MUTES, values)
+        rows = cur.fetchall()
+        if rows is None:
+            return None
+        return [x for x[0] in rows]
         
 def update_end_time(discord_id, end):
     logging.debug('updating time for %s %d' % (discord_id, end))
@@ -98,6 +148,7 @@ def create_tables():
         cur.execute(CREATE_TIME_TABLE)
         cur.execute(CREATE_VERSION_TABLE)
         cur.execute(CREATE_TIME_ARCIVAL_TABLE)
+        cur.execute(CREATE_MUTE_TABLE)
         logging.debug('created tables')
         
 def create_triggers():

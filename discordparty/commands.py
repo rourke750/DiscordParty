@@ -9,12 +9,21 @@ from .utils.utils import *
 from .utils.checks import *
 from .utils import quiz
 from .db import db
+from .views import views
+
+import logging
 
 import datetime
 
 from typing import Literal
 
 import asyncio
+
+def get_help_message():
+    return '''
+            List of commands:
+            mute: returns a view for modifying mute of axillary notifications
+           '''
 
 class DiscordPartyCommands(commands.Cog):
     def __init__(self, bot):
@@ -24,12 +33,13 @@ class DiscordPartyCommands(commands.Cog):
     @commands.command()
     @commands.is_owner()
     async def sync(self, ctx, all=False):
-        print('sync command')
         if not all:
+            logging.info('sync command run for just this guild')
             self.bot.tree.clear_commands(guild=ctx.guild)
             self.bot.tree.copy_global_to(guild=ctx.guild)
             await self.bot.tree.sync(guild=ctx.guild)
         else:
+            logging.info('sync command run for all guilds')
             for guild in self.bot.guilds:
                 self.bot.tree.clear_commands(guild=guild)
                 await self.bot.tree.sync(guild=guild)
@@ -70,12 +80,17 @@ class DiscordPartyCommands(commands.Cog):
             await ctx.send('You must be in a voice channel to run this command', ephemeral=True)
             return
             
+        # check if the user we are waving to is muted
+        if db.get_user_muted(user.id) is not None:
+            await ctx.send('%s is muted, can\'t send wave' % user.display_name, ephemeral=True)
+            return
+            
         jump_url = command_user.voice.channel.jump_url
         await ctx.send('Waved to %s' % user.display_name, ephemeral=True)
         user_channel = user.dm_channel
         if user_channel is None:
             user_channel = await user.create_dm()
-        await user_channel.send('%s waved to you %s' % (command_user.display_name, jump_url), view=views.SupressWave())
+        await user_channel.send('%s waved to you %s' % (command_user.display_name, jump_url), view=views.SupressWave(user.id))
         
     @commands.guild_only()
     @chatpartyadmin.command(name="broadcast", description="Set channel to allow broadcasts from", with_app_command=True)

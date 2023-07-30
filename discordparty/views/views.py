@@ -1,24 +1,81 @@
 import discord
 
 import asyncio
+import datetime
+
+from ..db import db
 
 class SupressWave(discord.ui.View):
-    @discord.ui.button(label='mute', style=discord.ButtonStyle.red)
-    async def mute(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.send_message('You will not recieve these notifications', ephemeral=True)
+    def __init__(self, discord_id):
+        super().__init__()
+        self.discord_id = discord_id
+        # now load the currently selected option if we are muted or not
+        is_muted = db.get_user_muted(discord_id)
+        if is_muted is None:
+            # disable unmute
+            self.disable_unmute()
+        else:
+            # disable others
+            self.disable_other_mute()
+        self.is_muted = is_muted
         
-    @discord.ui.button(label='mute 1 hr', style=discord.ButtonStyle.red)
+    def disable_unmute(self):
+        for c in self.children:
+            if c.label == 'unmute':
+                c.disabled = True
+            else:
+                c.disabled = False
+                
+    def disable_other_mute(self, label=None):
+        for c in self.children:
+            if c.label != 'unmute' and (label is None or c.label == label):
+                c.disabled = True
+            else:
+                c.disabled = False
+                
+    def update_muted_record(self, expiry):
+        # check if we are muted and if we are insert otherwise update
+        if self.is_muted is not None:
+            # we are muted so update record
+            db.update_user_muted(self.discord_id, expiry)
+        else:
+            # we are not muted so insert record
+            db.insert_user_muted(self.discord_id, expiry)
+        self.is_muted = expiry
+        
+    @discord.ui.button(label='unmute', style=discord.ButtonStyle.green)
+    async def unmute(self, interaction: discord.Interaction, button: discord.ui.Button):
+        self.disable_unmute()
+        # delete record from db
+        db.delete_user_muted(self.discord_id)
+        self.is_muted = None
+        await interaction.message.edit(view=self)
+        await interaction.response.defer()
+        
+    @discord.ui.button(label='mute', style=discord.ButtonStyle.green)
+    async def mute(self, interaction: discord.Interaction, button: discord.ui.Button):
+        self.disable_other_mute(button.label)
+        self.update_muted_record(-1)
+        await interaction.message.edit(view=self)
+        await interaction.response.defer()
+        
+    @discord.ui.button(label='mute 1 hr', style=discord.ButtonStyle.green)
     async def mute_1_hr(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.send_message('You will not recieve these notifications for 1 hour', ephemeral=True)
+        self.disable_other_mute(button.label)
+        current_time_and_hour = datetime.datetime.now() + datetime.timedelta(hours=1)
+        timestamp = int(datetime.datetime.timestamp(current_time_and_hour))
+        self.update_muted_record(timestamp)
+        await interaction.message.edit(view=self)
+        await interaction.response.defer()
         
 class QuizView(discord.ui.View):
     DELAYED_TIME = 10
     
-    def __init__(self):
+    def __init__(self, message):
         super().__init__()
-        self.clear()
-        self.message = None
+        self.message = message
         
+        self.clear()
         self.current_question_count = 0
         self.max_questions = 5
         

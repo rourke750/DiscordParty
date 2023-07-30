@@ -53,8 +53,7 @@ async def start_quiz(message, view):
     asyncio.create_task(start_quiz(message, view))
     
 async def track_quiz(message):
-    view = views.QuizView()
-    view.message = message
+    view = views.QuizView(message)
     id = message.id
     # start the quiz in a new task
     asyncio.create_task(start_quiz(message, view))

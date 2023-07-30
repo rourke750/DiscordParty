@@ -4,10 +4,12 @@ from discord.ext import commands
 from discord.ext.commands import has_permissions, has_role
 
 from .commands import DiscordPartyCommands
+from .commands import get_help_message
 from .utils.utils import *
 from .mappings.mapping import DRole
 from .db import db
 from .events import events
+from .views import views
 
 import os
 from dotenv import load_dotenv
@@ -115,10 +117,22 @@ async def on_voice_state_update(member, before, after):
             members_len = len(voice_chan_before.members)
             if members_len == 0:
                 await remove_zero_house_channel(voice_chan_before)
-            # lets check if the after chan is none or not a tracked channel
-            #moved_to_untracked_channel = voice_chan_after is not None and voice_chan_after.category is not None and should_broadcast(voice_chan_after.category.changed_roles) == 0
-            #move_to_no_channel = voice_chan_after is None or voice_chan_after.category is None
-            #if moved_to_untracked_channel or move_to_no_channel:
+                
+@bot.event
+async def on_message(message):
+    #handle messages being sent to user
+    if message.guild is not None or message.author.bot:
+        return
+        
+    content = message.content
+    if content == 'help':
+        # print help message
+        await message.channel.send(content=get_help_message())
+    elif content == 'mute':
+        await message.channel.send(view=views.SupressWave(message.author.id))
+    else:
+        await message.channel.send(content='type help for help')
+    
         
 
 asyncio.run(bot.add_cog(DiscordPartyCommands(bot)))
