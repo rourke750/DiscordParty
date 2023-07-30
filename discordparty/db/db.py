@@ -91,7 +91,7 @@ def get_all_user_muted_expired(t):
         rows = cur.fetchall()
         if rows is None:
             return None
-        return [x for x[0] in rows]
+        return [x[0] for x in rows]
         
 def update_end_time(discord_id, end):
     logging.debug('updating time for %s %d' % (discord_id, end))
