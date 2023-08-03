@@ -190,16 +190,14 @@ class DiscordPartyCommands(commands.Cog):
                 house_party_role = bot_role
         if house_party_role is None:
             print("error no bot default role")
-        #house_party_role = discord.utils.get(guild.roles, name=f'ChatParty')
         category = discord.utils.get(guild.categories, name=f'private_house_channel')
         perms = {'speak': True, 'view_channel': True, 'connect': True, 'use_voice_activation': True, }
         overwrite = discord.PermissionOverwrite(**perms)
         bot_account = discord.PermissionOverwrite(**{'speak': False, 'view_channel': True, 'connect': True})
         new_channel = await guild.create_voice_channel(name=f'{member.name}-PrivateRole', category=category, overwrites={role: overwrite, house_party_role: bot_account})
-        #await new_channel.set_permissions(role, reason='Temp private channel', overwrite=overwrite)
         
         # set the private_house_party_role so we can delete this later
-        private_house_role = discord.utils.get(guild.roles, name=PRIVATE_ROLE)
+        private_house_role = discord.utils.get(guild.roles, name=DRole.PRIVATE_ROLE.value)
         overwrite = discord.PermissionOverwrite()
         await new_channel.set_permissions(private_house_role, reason='Temp role for deleting channel when done', overwrite=overwrite)
         
