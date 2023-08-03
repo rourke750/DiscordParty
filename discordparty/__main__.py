@@ -94,7 +94,12 @@ async def on_voice_state_update(member, before, after):
                 members = ', '.join([x.name for x in voice_chan_after.members])
                 await chan.send(f'{members} are in the house together')
             else:
-                await chan.send(f'{voice_chan_after.members[0].name} has entered the chat @everyone')
+                role_name = '@everyone'
+                db_role_id = db.get_guild_broadcast_role(voice_chan_after.guild.id)
+                if db_role_id is not None:
+                    role_name = voice_chan_after.guild.get_role(db_role_id).mention
+                    print(role_name)
+                await chan.send(f'{voice_chan_after.members[0].name} has entered the chat {role_name}')
                 # check if we need to create a new channel
                 if broadCastVal == 2:
                     await handle_multi_house_channel(member.guild)
@@ -118,7 +123,7 @@ async def on_voice_state_update(member, before, after):
             if members_len == 0:
                 await remove_zero_house_channel(voice_chan_before)
                 
-@bot.event
+#@bot.event
 async def on_message(message):
     #handle messages being sent to user
     if message.guild is not None or message.author.bot:

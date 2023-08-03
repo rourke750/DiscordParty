@@ -17,6 +17,7 @@ CREATE_TIME_TABLE = 'CREATE TABLE IF NOT EXISTS time_record (discord_id INT, sta
 CREATE_VERSION_TABLE = 'CREATE TABLE IF NOT EXISTS versions (version INT, timestamp INT);'
 CREATE_TIME_ARCIVAL_TABLE = 'CREATE TABLE IF NOT EXISTS time_record_arcival (discord_id INT, week_num INT, total_time INT, PRIMARY KEY(discord_id, week_num));'
 CREATE_MUTE_TABLE = 'CREATE TABLE IF NOT EXISTS mute_record (discord_id INT, expiry INT, PRIMARY KEY(discord_id));'
+CREATE_GUILD_ROLE_TABLE = 'CREATE TABLE IF NOT EXISTS guild_role_table (guild_id INT, role_id INT, PRIMARY KEY (guild_id));'
 
 # create trigger for moving data from one time_record to consolidated
 CREATE_TRIGGER_TIME_MOVEMENT = '''
@@ -43,6 +44,31 @@ UPDATE_USER_MUTED = '''UPDATE mute_record SET expiry = ? WHERE discord_id = ?;''
 DELETE_USER_MUTED = '''DELETE FROM mute_record WHERE discord_id = ?;'''
 IS_USER_MUTED = '''SELECT expiry FROM mute_record WHERE discord_id = ?;''';
 GET_ALL_EXPIRED_MUTES = '''SELECT discord_id FROM mute_record WHERE expiry != -1 AND expiry < ?;'''
+
+INSERT_GUILD_BROADCAST_ROLE = '''INSERT OR REPLACE INTO guild_role_table (guild_id, role_id) VALUES(?, ?);'''
+GET_GUILD_BROADCAST_ROLE = '''SELECT role_id FROM guild_role_table WHERE guild_id = ?;'''
+DELETE_GUILD_BROADCAST_ROLE = '''DELETE FROM guild_role_table WHERE guild_id = ?;'''
+
+def insert_guild_broadcast_role(guild_id, role_id):
+    with closing(con.cursor()) as cur:
+        values = (guild_id, role_id)
+        cur.execute(INSERT_GUILD_BROADCAST_ROLE, values)
+        con.commit()
+        
+def delete_guild_broadcast_role(guild_id):
+    with closing(con.cursor()) as cur:
+        values = (guild_id,)
+        cur.execute(DELETE_GUILD_BROADCAST_ROLE, values)
+        con.commit()
+
+def get_guild_broadcast_role(guild_id):
+    with closing(con.cursor()) as cur:
+        values = (guild_id,)
+        cur.execute(GET_GUILD_BROADCAST_ROLE, values)
+        row = cur.fetchone()
+        if row is None:
+            return None
+        return row[0]
 
 def insert_time(discord_id, start):
     logging.debug('inserting time for %s %d' % (discord_id, start))
@@ -149,6 +175,7 @@ def create_tables():
         cur.execute(CREATE_VERSION_TABLE)
         cur.execute(CREATE_TIME_ARCIVAL_TABLE)
         cur.execute(CREATE_MUTE_TABLE)
+        cur.execute(CREATE_GUILD_ROLE_TABLE)
         logging.debug('created tables')
         
 def create_triggers():

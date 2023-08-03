@@ -2,7 +2,7 @@ from discord import app_commands
 from discord.ext import commands
 from discord.ext.commands import has_permissions, has_role
 
-from typing import Literal
+from typing import Literal, Union
 
 from .mappings.mapping import DRole
 from .utils.utils import *
@@ -15,8 +15,6 @@ import logging
 
 import datetime
 
-from typing import Literal
-
 import asyncio
 
 def get_help_message():
@@ -27,7 +25,14 @@ def get_help_message():
 
 class DiscordPartyCommands(commands.Cog):
     def __init__(self, bot):
+        super().__init__()
         self.bot = bot
+        
+    @commands.guild_only()
+    @commands.command()
+    @commands.is_owner()
+    async def sync_chatparty(self, ctx, all=False):
+        await self.sync(ctx, all)
 
     @commands.guild_only()
     @commands.command()
@@ -129,7 +134,17 @@ class DiscordPartyCommands(commands.Cog):
             await member.remove_roles(admin_role)
             msg = f'Removed member ${member.name} to admin'
         await ctx.send(msg)
-            
+        
+    @config.command(name="set_broadcast_role", description="Sets the role to use for broadcasting for chatparty broadcasts", with_app_command=True)
+    @commands.guild_only()
+    @commands.check(has_permission_or_role)
+    async def set_broadcast_role(self, ctx, role: Union[discord.Role, None]):
+        if role is None:
+            db.delete_guild_broadcast_role(ctx.guild.id)
+            await ctx.send("Removed broadcast role for this guild", ephemeral=True)
+        else:
+            db.insert_guild_broadcast_role(role.guild.id, role.id)
+            await ctx.send("Added broadcast role for this guild", ephemeral=True)
         
     @refresh.command(name="clear", description="clear all chat party related channels", with_app_command=True)
     @commands.guild_only()
