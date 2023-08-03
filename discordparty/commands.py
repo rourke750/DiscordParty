@@ -138,12 +138,18 @@ class DiscordPartyCommands(commands.Cog):
     @config.command(name="set_broadcast_role", description="Sets the role to use for broadcasting for chatparty broadcasts", with_app_command=True)
     @commands.guild_only()
     @commands.check(has_permission_or_role)
-    async def set_broadcast_role(self, ctx, role: Union[discord.Role, None]):
+    async def set_broadcast_role(self, ctx, role: Union[discord.Role, None], channel: Union[discord.VoiceChannel, None]):
+        channel_id = -1
+        if channel is not None:
+            channel_id = channel.id
         if role is None:
-            db.delete_guild_broadcast_role(ctx.guild.id)
-            await ctx.send("Removed broadcast role for this guild", ephemeral=True)
+            db.delete_guild_broadcast_role(ctx.guild.id, channel_id)
+            if channel_id == -1:
+                await ctx.send("Removed general broadcast role for this guild", ephemeral=True)
+            else:
+                await ctx.send("Removed broadcast role for channel " + channel.name, ephemeral=True)
         else:
-            db.insert_guild_broadcast_role(role.guild.id, role.id)
+            db.insert_guild_broadcast_role(role.guild.id, role.id, channel_id)
             await ctx.send("Added broadcast role for this guild", ephemeral=True)
         
     @refresh.command(name="clear", description="clear all chat party related channels", with_app_command=True)

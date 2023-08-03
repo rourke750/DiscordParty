@@ -17,7 +17,7 @@ CREATE_TIME_TABLE = 'CREATE TABLE IF NOT EXISTS time_record (discord_id INT, sta
 CREATE_VERSION_TABLE = 'CREATE TABLE IF NOT EXISTS versions (version INT, timestamp INT);'
 CREATE_TIME_ARCIVAL_TABLE = 'CREATE TABLE IF NOT EXISTS time_record_arcival (discord_id INT, week_num INT, total_time INT, PRIMARY KEY(discord_id, week_num));'
 CREATE_MUTE_TABLE = 'CREATE TABLE IF NOT EXISTS mute_record (discord_id INT, expiry INT, PRIMARY KEY(discord_id));'
-CREATE_GUILD_ROLE_TABLE = 'CREATE TABLE IF NOT EXISTS guild_role_table (guild_id INT, role_id INT, PRIMARY KEY (guild_id));'
+CREATE_GUILD_ROLE_TABLE = 'CREATE TABLE IF NOT EXISTS guild_role_table (guild_id INT, role_id INT, channel_id INT, PRIMARY KEY (guild_id, channel_id));'
 
 # create trigger for moving data from one time_record to consolidated
 CREATE_TRIGGER_TIME_MOVEMENT = '''
@@ -45,30 +45,35 @@ DELETE_USER_MUTED = '''DELETE FROM mute_record WHERE discord_id = ?;'''
 IS_USER_MUTED = '''SELECT expiry FROM mute_record WHERE discord_id = ?;''';
 GET_ALL_EXPIRED_MUTES = '''SELECT discord_id FROM mute_record WHERE expiry != -1 AND expiry < ?;'''
 
-INSERT_GUILD_BROADCAST_ROLE = '''INSERT OR REPLACE INTO guild_role_table (guild_id, role_id) VALUES(?, ?);'''
-GET_GUILD_BROADCAST_ROLE = '''SELECT role_id FROM guild_role_table WHERE guild_id = ?;'''
-DELETE_GUILD_BROADCAST_ROLE = '''DELETE FROM guild_role_table WHERE guild_id = ?;'''
+INSERT_GUILD_BROADCAST_ROLE = '''INSERT OR REPLACE INTO guild_role_table (guild_id, role_id, channel_id) VALUES(?, ?, ?);'''
+GET_GUILD_BROADCAST_ROLE = '''SELECT role_id, channel_id FROM guild_role_table WHERE guild_id = ? AND channel_id = ? OR channel_id = -1;'''
+DELETE_GUILD_BROADCAST_ROLE = '''DELETE FROM guild_role_table WHERE guild_id = ? AND channel_id = ?;'''
 
-def insert_guild_broadcast_role(guild_id, role_id):
+def insert_guild_broadcast_role(guild_id, role_id, channel_id=-1):
     with closing(con.cursor()) as cur:
-        values = (guild_id, role_id)
+        values = (guild_id, role_id, channel_id)
         cur.execute(INSERT_GUILD_BROADCAST_ROLE, values)
         con.commit()
         
-def delete_guild_broadcast_role(guild_id):
+def delete_guild_broadcast_role(guild_id, channel_id=-1):
     with closing(con.cursor()) as cur:
-        values = (guild_id,)
+        values = (guild_id, channel_id)
         cur.execute(DELETE_GUILD_BROADCAST_ROLE, values)
         con.commit()
 
-def get_guild_broadcast_role(guild_id):
+def get_guild_broadcast_role(guild_id, channel_id=-1):
     with closing(con.cursor()) as cur:
-        values = (guild_id,)
+        values = (guild_id, channel_id)
         cur.execute(GET_GUILD_BROADCAST_ROLE, values)
-        row = cur.fetchone()
-        if row is None:
+        rows = cur.fetchall()
+        if len(rows) == 0:
             return None
-        return row[0]
+        # we can have two one thats general and one thats channel specific, if two return the one that isnt -1
+        if len(rows) == 2:
+            for row in rows:
+                if row[1] != -1:
+                    return row[0]
+        return rows[0][0]
 
 def insert_time(discord_id, start):
     logging.debug('inserting time for %s %d' % (discord_id, start))
