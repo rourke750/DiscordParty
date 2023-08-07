@@ -6,6 +6,7 @@ from discord.ext.commands import has_permissions, has_role
 from .commands import DiscordPartyCommands
 from .commands import get_help_message
 from .utils.utils import *
+from .utils import reactions
 from .mappings.mapping import DRole
 from .db import db
 from .events import events
@@ -142,7 +143,13 @@ async def on_message(message):
     else:
         await message.channel.send(content='type help for help')
     
-        
+@bot.event
+async def on_raw_reaction_add(payload):
+    await reactions.on_raw_reaction_add(payload)
+    
+@bot.event
+async def on_raw_reaction_remove(payload):
+    await reactions.on_raw_reaction_remove(bot, payload)
 
 asyncio.run(bot.add_cog(DiscordPartyCommands(bot)))
 events.set_bot(bot)

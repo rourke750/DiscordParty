@@ -1,18 +1,18 @@
 from discord import app_commands
 from discord.ext import commands
-from discord.ext.commands import has_permissions, has_role
+from discord.ext.commands import has_permissions, has_role, EmojiConverter
 
 from typing import Literal, Union
 
 from .mappings.mapping import DRole
 from .utils.utils import *
 from .utils.checks import *
-from .utils import quiz
+from .utils import quiz, reactions
 from .db import db
 from .views import views
 
 import logging
-
+import emoji as emoji_p
 import datetime
 
 import asyncio
@@ -41,6 +41,7 @@ class DiscordPartyCommands(commands.Cog):
         if not all:
             logging.info('sync command run for just this guild')
             self.bot.tree.clear_commands(guild=ctx.guild)
+            await self.bot.tree.sync(guild=ctx.guild)
             self.bot.tree.copy_global_to(guild=ctx.guild)
             await self.bot.tree.sync(guild=ctx.guild)
         else:
@@ -122,6 +123,65 @@ class DiscordPartyCommands(commands.Cog):
     async def config(self, ctx):
         await ctx.send("Parent command!")
         
+    @config.command(name="role_create", description="Command for creating role message in current channel", with_app_command=True)
+    @commands.guild_only()
+    @commands.check(has_permission_or_role)
+    async def create_role_message(self, ctx):
+        # check if the guild already has a role message
+        message_id = db.get_message_id_for_guild(ctx.guild.id)
+        if message_id is not None:
+            # message is is already present
+            await ctx.send("Role message already exists for this guild", ephemeral=True)
+            return
+        # let's create it
+        message = await ctx.send("MessageRoles, like the roles below to be added")
+        reactions.track_new_message_id(message.id, ctx.guild.id)
+        
+    @config.command(name="role_add_reaction", description="Command to add role to role message", with_app_command=True)
+    @commands.guild_only()
+    @commands.check(has_permission_or_role)
+    async def create_role_reaction(self, ctx, emoji:str, description:str, role: discord.Role):
+        # check if a message is set
+        message_id = db.get_message_id_for_guild(ctx.guild.id)
+        if message_id is None:
+            await ctx.send("You do not have a roles message created", ephemeral=True)
+            return
+        v_unicode = emoji_p.demojize(emoji)
+        if v_unicode == emoji:
+            await ctx.send("Please only use emojis in emoji field", ephemeral=True)
+            return
+        message = await ctx.fetch_message(message_id)
+        if message is None:
+            await ctx.send("Error, the roles message doesn't exist", ephemeral=True)
+        success = await reactions.add_emoji_with_description(message, emoji, description, role)
+        if not success:
+            # the emoji is already present
+            await ctx.send("That emoji is already being used", ephemeral=True)
+        else:
+            await ctx.defer()
+            
+    @config.command(name="role_remove_reaction", description="Command to remove role from role message", with_app_command=True)
+    @commands.guild_only()
+    @commands.check(has_permission_or_role)
+    async def remove_role_reaction(self, ctx, emoji:str):
+        message_id = db.get_message_id_for_guild(ctx.guild.id)
+        if message_id is None:
+            await ctx.send("You do not have a roles message created", ephemeral=True)
+            return
+        v_unicode = emoji_p.demojize(emoji)
+        if v_unicode == emoji:
+            await ctx.send("Please only use emojis in emoji field", ephemeral=True)
+            return
+        message = await ctx.fetch_message(message_id)
+        if message is None:
+            await ctx.send("Error, the roles message doesn't exist", ephemeral=True)
+        success = await reactions.remove_emoji(message, emoji)
+        if not success:
+            # the emoji is already present
+            await ctx.send("That emoji is not being used", ephemeral=True)
+        else:
+            await ctx.defer()
+        
     @config.command(name="set_admin", description="sets a user as admin or not for chatparty", with_app_command=True)
     @commands.guild_only()
     @commands.check(has_permission_or_role)
@@ -149,7 +209,7 @@ class DiscordPartyCommands(commands.Cog):
             else:
                 await ctx.send("Removed broadcast role for channel " + channel.name, ephemeral=True)
         else:
-            db.insert_guild_broadcast_role(role.guild.id, role.id, channel_id)
+            db.insert_guild_broadcast_role(role.guild.id, role.id)
             await ctx.send("Added broadcast role for this guild", ephemeral=True)
         
     @refresh.command(name="clear", description="clear all chat party related channels", with_app_command=True)

@@ -18,6 +18,8 @@ CREATE_VERSION_TABLE = 'CREATE TABLE IF NOT EXISTS versions (version INT, timest
 CREATE_TIME_ARCIVAL_TABLE = 'CREATE TABLE IF NOT EXISTS time_record_arcival (discord_id INT, week_num INT, total_time INT, PRIMARY KEY(discord_id, week_num));'
 CREATE_MUTE_TABLE = 'CREATE TABLE IF NOT EXISTS mute_record (discord_id INT, expiry INT, PRIMARY KEY(discord_id));'
 CREATE_GUILD_ROLE_TABLE = 'CREATE TABLE IF NOT EXISTS guild_role_table (guild_id INT, role_id INT, channel_id INT, PRIMARY KEY (guild_id, channel_id));'
+CREATE_REACTION_MESSAGE_TABLE = 'CREATE TABLE IF NOT EXISTS guild_message_id_table (message_id INT, guild_id INT, PRIMARY KEY(guild_id, message_id));'
+CREATE_MESSAGE_TO_REACTION_TABLE = 'CREATE TABLE IF NOT EXISTS guild_reaction_to_role_table(message_id INT, role_id INT, reaction_id text);'
 
 # create trigger for moving data from one time_record to consolidated
 CREATE_TRIGGER_TIME_MOVEMENT = '''
@@ -48,6 +50,59 @@ GET_ALL_EXPIRED_MUTES = '''SELECT discord_id FROM mute_record WHERE expiry != -1
 INSERT_GUILD_BROADCAST_ROLE = '''INSERT OR REPLACE INTO guild_role_table (guild_id, role_id, channel_id) VALUES(?, ?, ?);'''
 GET_GUILD_BROADCAST_ROLE = '''SELECT role_id, channel_id FROM guild_role_table WHERE guild_id = ? AND channel_id = ? OR channel_id = -1;'''
 DELETE_GUILD_BROADCAST_ROLE = '''DELETE FROM guild_role_table WHERE guild_id = ? AND channel_id = ?;'''
+
+SELECT_ALL_MESSAGE_IDS = '''SELECT message_id FROM guild_message_id_table;'''
+INSERT_MESSAGE_ID_FOR_GUILD = '''INSERT INTO guild_message_id_table (message_id, guild_id) VALUES(?, ?);'''
+DELETE_MESSAGE_ID_FOR_GUILD = '''DELETE FROM guild_message_id_table WHERE message_id = ?;'''
+DELETE_MESSAGE_ID_FOR_GUILD_REACTION = '''DELETE FROM guild_reaction_to_role_table WHERE message_id = ?;'''
+SELECT_MESSAGE_ID_FOR_GUILD = '''SELECT message_id FROM guild_message_id_table WHERE guild_id = ?;'''
+INSERT_EMOJI_TO_ROLE_FOR_GUILD_REACTION = '''INSERT INTO guild_reaction_to_role_table (message_id, role_id, reaction_id) values (?, ?, ?);'''
+SELECT_ROLE_FROM_EMOJI = '''SELECT role_id FROM guild_reaction_to_role_table WHERE message_id = ? AND reaction_id = ?;'''
+
+def get_role_from_guild_reaction(message_id, reaction_id):
+    with closing(con.cursor()) as cur:
+        values = (message_id, reaction_id)
+        cur.execute(SELECT_ROLE_FROM_EMOJI, values)
+        rows = cur.fetchone()
+        if rows is None or len(rows) == 0:
+            return None
+        return rows[0]
+
+def insert_role_for_reaction_id(message_id, role_id, reaction_id):
+    with closing(con.cursor()) as cur:
+        values = (message_id, role_id, reaction_id)
+        cur.execute(INSERT_EMOJI_TO_ROLE_FOR_GUILD_REACTION, values)
+        con.commit()
+
+def get_message_id_for_guild(guild_id):
+    with closing(con.cursor()) as cur:
+        values = (guild_id,)
+        cur.execute(SELECT_MESSAGE_ID_FOR_GUILD, values)
+        rows = cur.fetchone()
+        if rows is None or len(rows) == 0:
+            return None
+        return rows[0]
+
+def delete_message_id_for_guild(message_id):
+    with closing(con.cursor()) as cur:
+        values = (messgae_id,)
+        cur.execute(DELETE_MESSAGE_ID_FOR_GUILD, values)
+        cur.execute(DELETE_MESSAGE_ID_FOR_GUILD_REACTION, values)
+        con.commit()
+
+def insert_message_id_for_guild(messgae_id, guild_id):
+    with closing(con.cursor()) as cur:
+        values = (messgae_id, guild_id)
+        cur.execute(INSERT_MESSAGE_ID_FOR_GUILD, values)
+        con.commit()
+
+def get_all_message_ids():
+    with closing(con.cursor()) as cur:
+        cur.execute(SELECT_ALL_MESSAGE_IDS)
+        rows = cur.fetchall()
+        if rows is None or len(rows) == 0:
+            return []
+        return [x[0] for x in rows]
 
 def insert_guild_broadcast_role(guild_id, role_id, channel_id=-1):
     with closing(con.cursor()) as cur:
@@ -181,6 +236,8 @@ def create_tables():
         cur.execute(CREATE_TIME_ARCIVAL_TABLE)
         cur.execute(CREATE_MUTE_TABLE)
         cur.execute(CREATE_GUILD_ROLE_TABLE)
+        cur.execute(CREATE_REACTION_MESSAGE_TABLE)
+        cur.execute(CREATE_MESSAGE_TO_REACTION_TABLE)
         logging.debug('created tables')
         
 def create_triggers():
