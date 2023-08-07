@@ -1,6 +1,8 @@
 from discord import app_commands
 from discord.ext import commands
 from discord.ext.commands import has_permissions, has_role, EmojiConverter
+from discord.ext.commands.errors import HybridCommandError
+from discord.errors import NotFound
 
 from typing import Literal, Union
 
@@ -173,7 +175,11 @@ class DiscordPartyCommands(commands.Cog):
         if v_unicode == emoji:
             await ctx.send("Please only use emojis in emoji field", ephemeral=True)
             return
-        message = await ctx.fetch_message(message_id)
+        try:
+            message = await ctx.fetch_message(message_id)
+        except (HybridCommandError, NotFound):
+            await ctx.send("Please use this command in the same channel as your reaction role message", ephemeral=True)
+            return
         if message is None:
             await ctx.send("Error, the roles message doesn't exist", ephemeral=True)
         success = await reactions.add_emoji_with_description(message, emoji, description, role)
@@ -233,7 +239,10 @@ class DiscordPartyCommands(commands.Cog):
                 await ctx.send("Removed broadcast role for channel " + channel.name, ephemeral=True)
         else:
             db.insert_guild_broadcast_role(role.guild.id, role.id)
-            await ctx.send("Added broadcast role for this guild", ephemeral=True)
+            if channel_id == -1:
+                await ctx.send("Added broadcast role for this guild", ephemeral=True)
+            else:
+                await ctx.send("Added broadcast role for channel", ephemeral=True)
         
     @refresh.command(name="clear", description="clear all chat party related channels", with_app_command=True)
     @commands.guild_only()
