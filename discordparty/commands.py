@@ -137,7 +137,11 @@ class DiscordPartyCommands(commands.Cog):
         message = await ctx.send("MessageRoles, like the roles below to be added")
         reactions.track_new_message_id(message.id, ctx.guild.id)
         # lets try disable adding roles to messages for this channel
-        await ctx.channel.set_permissions(ctx.guild.default_role, add_reactions=False)
+        house_party_role = get_bot_role(self.bot, ctx.guild)
+        tasks = []
+        tasks.append(ctx.channel.set_permissions(house_party_role, add_reactions=True))
+        tasks.append(ctx.channel.set_permissions(ctx.guild.default_role, add_reactions=False))
+        await asyncio.gather(*tasks)
         
     @config.command(name="role_delete", description="Command for deleting role message", with_app_command=True)
     @commands.guild_only()
@@ -269,10 +273,7 @@ class DiscordPartyCommands(commands.Cog):
         # 1. give everyone in channel role
         # 2. set channel role
         role = await guild.create_role(name=f'{member.name}-PrivateRole')
-        house_party_roles = ctx.guild.get_member(self.bot.user.id).roles
-        for bot_role in house_party_roles:
-            if bot_role.is_bot_managed():
-                house_party_role = bot_role
+        house_party_role = get_bot_role(self.bot, ctx.guild)
         if house_party_role is None:
             print("error no bot default role")
         category = discord.utils.get(guild.categories, name=f'private_house_channel')

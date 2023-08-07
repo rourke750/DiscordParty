@@ -110,3 +110,9 @@ def delete_sub_channels_and_category(guild, categories):
             channels.append(chan.delete())
         channels.append(cat.delete())
     asyncio.gather(*channels)
+    
+def get_bot_role(bot, guild):
+    house_party_roles = guild.get_member(bot.user.id).roles
+    for bot_role in house_party_roles:
+        if bot_role.is_bot_managed() and bot_role.name == bot.user.name:
+            return bot_role
