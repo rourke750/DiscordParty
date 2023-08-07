@@ -85,14 +85,14 @@ def get_message_id_for_guild(guild_id):
 
 def delete_message_id_for_guild(message_id):
     with closing(con.cursor()) as cur:
-        values = (messgae_id,)
+        values = (message_id,)
         cur.execute(DELETE_MESSAGE_ID_FOR_GUILD, values)
         cur.execute(DELETE_MESSAGE_ID_FOR_GUILD_REACTION, values)
         con.commit()
 
-def insert_message_id_for_guild(messgae_id, guild_id):
+def insert_message_id_for_guild(message_id, guild_id):
     with closing(con.cursor()) as cur:
-        values = (messgae_id, guild_id)
+        values = (message_id, guild_id)
         cur.execute(INSERT_MESSAGE_ID_FOR_GUILD, values)
         con.commit()
 

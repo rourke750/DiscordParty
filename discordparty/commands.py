@@ -136,6 +136,25 @@ class DiscordPartyCommands(commands.Cog):
         # let's create it
         message = await ctx.send("MessageRoles, like the roles below to be added")
         reactions.track_new_message_id(message.id, ctx.guild.id)
+        # lets try disable adding roles to messages for this channel
+        await ctx.channel.set_permissions(ctx.guild.default_role, add_reactions=False)
+        
+    @config.command(name="role_delete", description="Command for deleting role message", with_app_command=True)
+    @commands.guild_only()
+    @commands.check(has_permission_or_role)
+    async def remove_role_message(self, ctx):
+        # check if the guild already has a role message
+        message_id = db.get_message_id_for_guild(ctx.guild.id)
+        if message_id is None:
+            # message is is already present
+            await ctx.send("Role message does not exist for this guild", ephemeral=True)
+            return
+        # let's untrack it
+        reactions.untrack_message_id(message_id)
+        # lets delete it now
+        message = await ctx.fetch_message(message_id)
+        await message.delete()
+        await ctx.send("Message role deleted", ephemeral=True)
         
     @config.command(name="role_add_reaction", description="Command to add role to role message", with_app_command=True)
     @commands.guild_only()
@@ -158,7 +177,7 @@ class DiscordPartyCommands(commands.Cog):
             # the emoji is already present
             await ctx.send("That emoji is already being used", ephemeral=True)
         else:
-            await ctx.defer()
+            await ctx.send("Added role reaction", ephemeral=True)
             
     @config.command(name="role_remove_reaction", description="Command to remove role from role message", with_app_command=True)
     @commands.guild_only()
@@ -180,7 +199,7 @@ class DiscordPartyCommands(commands.Cog):
             # the emoji is already present
             await ctx.send("That emoji is not being used", ephemeral=True)
         else:
-            await ctx.defer()
+            await ctx.send("Deleted role reaction", ephemeral=True)
         
     @config.command(name="set_admin", description="sets a user as admin or not for chatparty", with_app_command=True)
     @commands.guild_only()
