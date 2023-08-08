@@ -48,7 +48,7 @@ IS_USER_MUTED = '''SELECT expiry FROM mute_record WHERE discord_id = ?;''';
 GET_ALL_EXPIRED_MUTES = '''SELECT discord_id FROM mute_record WHERE expiry != -1 AND expiry < ?;'''
 
 INSERT_GUILD_BROADCAST_ROLE = '''INSERT OR REPLACE INTO guild_role_table (guild_id, role_id, channel_id) VALUES(?, ?, ?);'''
-GET_GUILD_BROADCAST_ROLE = '''SELECT role_id, channel_id FROM guild_role_table WHERE guild_id = ? AND channel_id = ? OR channel_id = -1;'''
+GET_GUILD_BROADCAST_ROLE = '''SELECT role_id, channel_id FROM guild_role_table WHERE guild_id = ? AND (channel_id = ? OR channel_id = -1);'''
 DELETE_GUILD_BROADCAST_ROLE = '''DELETE FROM guild_role_table WHERE guild_id = ? AND channel_id = ?;'''
 
 SELECT_ALL_MESSAGE_IDS = '''SELECT message_id FROM guild_message_id_table;'''
