@@ -3,6 +3,7 @@ import discord
 from ..mappings.mapping import DRole
 
 import asyncio
+import random
 
 async def setup_guild(guild, bot):
     await create_roles_for_guild(guild) # create roles for guild 
@@ -116,3 +117,8 @@ def get_bot_role(bot, guild):
     for bot_role in house_party_roles:
         if bot_role.is_bot_managed() and bot_role.name == bot.user.name:
             return bot_role
+            
+def get_random_voice(guild):
+    channels = guild.voice_channels
+    i = random.randrange(0, len(channels))
+    return channels[i]

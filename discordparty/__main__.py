@@ -11,6 +11,7 @@ from .mappings.mapping import DRole
 from .db import db
 from .events import events
 from .views import views
+from .events import events
 
 import os
 from dotenv import load_dotenv
@@ -130,11 +131,27 @@ async def on_message(message):
         await bot.process_commands(message)
         # dont need to return as the next line will
         
-    #handle messages being sent to user
+    content = message.content
+    # check for commands in guild that arent application
+    if message.guild and not message.author.bot:
+        if content.startswith('funban') and await bot.is_owner(message.author):
+            array = content.split(' ')
+            if len(array) != 2:
+                await message.channel.send(content='fucking nerd')
+                return
+            fun_ban_user = message.guild.get_member(int(array[1]))
+            if fun_ban_user is None:
+                await message.channel.send(content='stupid nerd')
+                return
+                
+            events.add_random_fun_user(fun_ban_user.id, message.guild.id)
+            await message.channel.send(content='get rekt nerd ' + fun_ban_user.display_name)
+    
+    # return if in guild or its a message from a bot
     if message.guild is not None or message.author.bot:
         return
+    #handle messages being sent to user
         
-    content = message.content
     if content == 'help':
         # print help message
         await message.channel.send(content=get_help_message())
