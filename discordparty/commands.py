@@ -238,7 +238,8 @@ class DiscordPartyCommands(commands.Cog):
             else:
                 await ctx.send("Removed broadcast role for channel " + channel.name, ephemeral=True)
         else:
-            db.insert_guild_broadcast_role(role.guild.id, role.id)
+            db.insert_guild_broadcast_role(role.guild.id, role.id, channel_id)
+            logging.info('role id %d, channel id %d' % (role.id, channel_id))
             if channel_id == -1:
                 await ctx.send("Added broadcast role for this guild", ephemeral=True)
             else:

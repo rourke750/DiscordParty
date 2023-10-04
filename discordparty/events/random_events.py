@@ -7,7 +7,7 @@ bot = None
 
 users = []
 
-@tasks.loop(minutes=1)
+@tasks.loop(seconds=10)
 async def random_event_movement_channel():
     for t in list(users):
         user_id = t[0]
