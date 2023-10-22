@@ -73,7 +73,7 @@ async def on_voice_state_update(member, before, after):
         # check category if it is a private chat
         cat = voice_chan_before.category
         if cat is not None and cat.name == 'private_house_channel':
-            bot_role = getBotMainRole(member.guild, bot)
+            bot_role = get_bot_role(bot, member.guild)
             for r in voice_chan_before.overwrites:
                 if type(r) is discord.Role and r.name != 'private_house_party_role' and r.name != '@everyone' and r.name != bot_role.name:
                     await r.delete()

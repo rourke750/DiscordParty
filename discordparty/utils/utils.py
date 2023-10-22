@@ -97,13 +97,6 @@ async def remove_zero_house_channel(chan):
 def get_broadcast_channel(guild):
     return discord.utils.get(guild.channels, name=f'who-is-in-the-house')
         
-def getBotMainRole(guild, bot):
-    house_party_roles = guild.get_member(bot.user.id).roles
-    for bot_role in house_party_roles:
-        if bot_role.is_bot_managed():
-            return bot_role
-    return None
-        
 def delete_sub_channels_and_category(guild, categories):
     channels = []
     for cat in categories:
@@ -115,8 +108,9 @@ def delete_sub_channels_and_category(guild, categories):
 def get_bot_role(bot, guild):
     house_party_roles = guild.get_member(bot.user.id).roles
     for bot_role in house_party_roles:
-        if bot_role.is_bot_managed() and bot_role.name == bot.user.name:
+        if bot_role.is_bot_managed() and len(bot_role.members) == 1 and bot.user.id == bot_role.members[0].id:
             return bot_role
+    return None
             
 def get_random_voice(guild):
     channels = guild.voice_channels

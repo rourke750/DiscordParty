@@ -285,7 +285,7 @@ class DiscordPartyCommands(commands.Cog):
         role = await guild.create_role(name=f'{member.name}-PrivateRole')
         house_party_role = get_bot_role(self.bot, ctx.guild)
         if house_party_role is None:
-            print("error no bot default role")
+            logging.info("error no bot default role")
         category = discord.utils.get(guild.categories, name=f'private_house_channel')
         perms = {'speak': True, 'view_channel': True, 'connect': True, 'use_voice_activation': True, }
         overwrite = discord.PermissionOverwrite(**perms)
