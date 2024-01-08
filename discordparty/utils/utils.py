@@ -13,7 +13,7 @@ async def setup_guild(guild, bot):
 async def create_categories_for_guild(guild, bot):
     priv_chat = discord.utils.get(guild.categories, name=f'private_house_channel')
     if priv_chat is None:
-        house_party_role = getBotMainRole(guild, bot)
+        house_party_role = get_bot_role(guild, bot)
         if house_party_role is None:
             print("error no bot default role")
         bot_account = discord.PermissionOverwrite(**{'speak': True, 'view_channel': True, 'connect': True, 'manage_channels': True})
