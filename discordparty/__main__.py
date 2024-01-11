@@ -147,6 +147,76 @@ async def on_message(message):
                 
             events.add_random_fun_user(fun_ban_user.id, message.guild.id)
             await message.channel.send(content='get rekt nerd ' + fun_ban_user.display_name)
+        elif content.startswith('funedit') and await bot.is_owner(message.author):
+            array = content.split(' ')
+            if len(array) != 3:
+                await message.channel.send(content='fucking nerd')
+                return
+            fun_edit_user = message.guild.get_member(int(array[1]))
+            if fun_edit_user is None:
+                await message.channel.send(content='stupid nerd')
+                return
+            db.insert_tokens_for_user(fun_edit_user.id, int(array[2]))
+        elif content.startswith('funtokens') and await bot.is_owner(message.author):
+            array = content.split(' ')
+            if len(array) != 2:
+                await message.channel.send(content='fucking nerd')
+                return
+            fun_points_user = message.guild.get_member(int(array[1]))
+            if fun_points_user is None:
+                await message.channel.send(content='stupid nerd')
+                return
+            tokens = db.get_tokens_for_user(fun_points_user.id)
+            await message.channel.send(content='le tokens be ' + str(tokens))
+        elif content.startswith('funban'):
+            # for everyone else
+            array = content.split(' ')
+            if len(array) != 2:
+                await message.channel.send(content='fucking nerd')
+                return
+            fun_ban_user = message.guild.get_member(int(array[1]))
+            if fun_ban_user is None:
+                await message.channel.send(content='stupid nerd')
+                return
+            # check how many tokens they have
+            discord_caller_id = message.author.id
+            tokens = db.get_tokens_for_user(discord_caller_id)
+            if tokens is None:
+                # they have no tokens lets give them some
+                db.insert_tokens_for_user(discord_caller_id, 3)
+                tokens = db.get_tokens_for_user(discord_caller_id)
+            if tokens <= 0:
+                # if they have zero or no tokens fun ban them instead
+                events.add_random_fun_user(discord_caller_id, message.guild.id)
+                await message.channel.send(content='I think you fucked up ' + message.author.display_name)
+                return
+                
+            # now we want to check and see who has more tokens, if equal fun ban both
+            fun_ban_user_tokens = db.get_tokens_for_user(fun_ban_user.id)
+            # if they have None tokens just fun ban them 
+            if fun_ban_user_tokens is None:
+                events.add_random_fun_user(fun_ban_user.id, message.guild.id)
+                await message.channel.send(content='Sucker you have been fun banned ' + fun_ban_user.display_name)
+                return
+            
+            # since they have tokens they can play lets see if they have more
+            if fun_ban_user_tokens > tokens:
+                # they have more tokens so we are going to funban the caller
+                events.add_random_fun_user(discord_caller_id, message.guild.id)
+                # we aren't going to subtract a token for less power, their suffer alone is punishment enough and not easy to abuse
+                await message.channel.send(content='Oof thats unfortunate ' + message.author.display_name)
+            elif fun_ban_user_tokens == tokens:
+                events.add_random_fun_user(discord_caller_id, message.guild.id)
+                events.add_random_fun_user(fun_ban_user.id, message.guild.id)
+                # subtract a token
+                db.insert_tokens_for_user(discord_caller_id, tokens - 1)
+                await message.channel.send(content='And thats what we call a wacky racer ' + message.author.display_name + ' ' + fun_ban_user.display_name)
+            else:
+                # they did it they have more tokens
+                events.add_random_fun_user(fun_ban_user.id, message.guild.id)
+                # subtract a token
+                db.insert_tokens_for_user(discord_caller_id, tokens - 1)
+                await message.channel.send(content=fun_ban_user.display_name + ' has been funbanned!!!!!!!')
     
     # return if in guild or its a message from a bot
     if message.guild is not None or message.author.bot:

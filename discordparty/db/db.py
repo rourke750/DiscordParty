@@ -20,6 +20,7 @@ CREATE_MUTE_TABLE = 'CREATE TABLE IF NOT EXISTS mute_record (discord_id INT, exp
 CREATE_GUILD_ROLE_TABLE = 'CREATE TABLE IF NOT EXISTS guild_role_table (guild_id INT, role_id INT, channel_id INT, PRIMARY KEY (guild_id, channel_id));'
 CREATE_REACTION_MESSAGE_TABLE = 'CREATE TABLE IF NOT EXISTS guild_message_id_table (message_id INT, guild_id INT, PRIMARY KEY(guild_id, message_id));'
 CREATE_MESSAGE_TO_REACTION_TABLE = 'CREATE TABLE IF NOT EXISTS guild_reaction_to_role_table(message_id INT, role_id INT, reaction_id text);'
+CREATE_TOKEN_TABLE = 'CREATE TABLE IF NOT EXISTS user_tokens(discord_id INT, tokens INT, max_tokens INT DEFAULT 3, PRIMARY KEY(discord_id));'
 
 # create trigger for moving data from one time_record to consolidated
 CREATE_TRIGGER_TIME_MOVEMENT = '''
@@ -58,6 +59,37 @@ DELETE_MESSAGE_ID_FOR_GUILD_REACTION = '''DELETE FROM guild_reaction_to_role_tab
 SELECT_MESSAGE_ID_FOR_GUILD = '''SELECT message_id FROM guild_message_id_table WHERE guild_id = ?;'''
 INSERT_EMOJI_TO_ROLE_FOR_GUILD_REACTION = '''INSERT INTO guild_reaction_to_role_table (message_id, role_id, reaction_id) values (?, ?, ?);'''
 SELECT_ROLE_FROM_EMOJI = '''SELECT role_id FROM guild_reaction_to_role_table WHERE message_id = ? AND reaction_id = ?;'''
+
+INSERT_TOKENS_FOR_USER = '''INSERT OR REPLACE INTO user_tokens (discord_id, tokens) VALUES(?, ?);'''
+SELECT_TOKENS_FOR_USER = '''SELECT tokens FROM user_tokens WHERE discord_id = ?;'''
+RESET_USER_TOKENS = '''UPDATE user_tokens SET tokens = max_tokens;'''
+RESET_TOKENS_FOR_USER = '''UPDATE user_tokens SET tokens = max_tokens where discord_id = ?;'''
+
+def reset_token_for_user(discord_id):
+    with closing(con.cursor()) as cur:
+        values = (discord_id,)
+        cur.execute(RESET_TOKENS_FOR_USER, values)
+        con.commit()
+
+def reset_all_users_tokens():
+    with closing(con.cursor()) as cur:
+        cur.execute(RESET_USER_TOKENS)
+        con.commit()
+
+def insert_tokens_for_user(discord_id, tokens):
+    with closing(con.cursor()) as cur:
+        values = (discord_id, tokens)
+        cur.execute(INSERT_TOKENS_FOR_USER, values)
+        con.commit()
+        
+def get_tokens_for_user(discord_id):
+    with closing(con.cursor()) as cur:
+        values = (discord_id,)
+        cur.execute(SELECT_TOKENS_FOR_USER, values)
+        rows = cur.fetchone()
+        if rows is None or len(rows) == 0:
+            return None
+        return rows[0]
 
 def get_role_from_guild_reaction(message_id, reaction_id):
     with closing(con.cursor()) as cur:
@@ -238,6 +270,7 @@ def create_tables():
         cur.execute(CREATE_GUILD_ROLE_TABLE)
         cur.execute(CREATE_REACTION_MESSAGE_TABLE)
         cur.execute(CREATE_MESSAGE_TO_REACTION_TABLE)
+        cur.execute(CREATE_TOKEN_TABLE)
         logging.debug('created tables')
         
 def create_triggers():
