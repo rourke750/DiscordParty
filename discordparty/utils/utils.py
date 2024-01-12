@@ -116,3 +116,8 @@ def get_random_voice(guild):
     channels = guild.voice_channels
     i = random.randrange(0, len(channels))
     return channels[i]
+    
+def get_user_obj_id_or_name(guild, val):
+    if val.isnumeric():
+        return guild.get_member(val)
+    return discord.utils.get(guild.members, display_name=val)

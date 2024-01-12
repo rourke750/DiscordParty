@@ -140,7 +140,7 @@ async def on_message(message):
             if len(array) != 2:
                 await message.channel.send(content='fucking nerd')
                 return
-            fun_ban_user = message.guild.get_member(int(array[1]))
+            fun_ban_user = get_user_obj_id_or_name(message.guild, array[1])
             if fun_ban_user is None:
                 await message.channel.send(content='stupid nerd')
                 return
@@ -152,7 +152,7 @@ async def on_message(message):
             if len(array) != 3:
                 await message.channel.send(content='fucking nerd')
                 return
-            fun_edit_user = message.guild.get_member(int(array[1]))
+            fun_edit_user = get_user_obj_id_or_name(message.guild, array[1])
             if fun_edit_user is None:
                 await message.channel.send(content='stupid nerd')
                 return
@@ -162,7 +162,7 @@ async def on_message(message):
             if len(array) != 2:
                 await message.channel.send(content='fucking nerd')
                 return
-            fun_points_user = message.guild.get_member(int(array[1]))
+            fun_points_user = get_user_obj_id_or_name(message.guild, array[1])
             if fun_points_user is None:
                 await message.channel.send(content='stupid nerd')
                 return
@@ -174,7 +174,7 @@ async def on_message(message):
             if len(array) != 2:
                 await message.channel.send(content='fucking nerd')
                 return
-            fun_ban_user = message.guild.get_member(int(array[1]))
+            fun_ban_user = get_user_obj_id_or_name(message.guild, array[1])
             if fun_ban_user is None:
                 await message.channel.send(content='stupid nerd')
                 return
