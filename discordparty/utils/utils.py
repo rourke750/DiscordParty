@@ -119,5 +119,5 @@ def get_random_voice(guild):
     
 def get_user_obj_id_or_name(guild, val):
     if val.isnumeric():
-        return guild.get_member(val)
+        return guild.get_member(int(val))
     return discord.utils.get(guild.members, display_name=val)
