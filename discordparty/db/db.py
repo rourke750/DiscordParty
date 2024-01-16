@@ -61,7 +61,7 @@ INSERT_EMOJI_TO_ROLE_FOR_GUILD_REACTION = '''INSERT INTO guild_reaction_to_role_
 SELECT_ROLE_FROM_EMOJI = '''SELECT role_id FROM guild_reaction_to_role_table WHERE message_id = ? AND reaction_id = ?;'''
 
 INSERT_TOKENS_FOR_USER = '''INSERT OR REPLACE INTO user_tokens (discord_id, tokens) VALUES(?, ?);'''
-SELECT_TOKENS_FOR_USER = '''SELECT tokens FROM user_tokens WHERE discord_id = ?;'''
+SELECT_TOKENS_FOR_USER = '''SELECT tokens, max_tokens FROM user_tokens WHERE discord_id = ?;'''
 RESET_USER_TOKENS = '''UPDATE user_tokens SET tokens = max_tokens;'''
 RESET_TOKENS_FOR_USER = '''UPDATE user_tokens SET tokens = max_tokens where discord_id = ?;'''
 
@@ -88,8 +88,8 @@ def get_tokens_for_user(discord_id):
         cur.execute(SELECT_TOKENS_FOR_USER, values)
         rows = cur.fetchone()
         if rows is None or len(rows) == 0:
-            return None
-        return rows[0]
+            return None, None
+        return rows[0], rows[1]
 
 def get_role_from_guild_reaction(message_id, reaction_id):
     with closing(con.cursor()) as cur:

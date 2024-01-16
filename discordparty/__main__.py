@@ -166,7 +166,7 @@ async def on_message(message):
             if fun_points_user is None:
                 await message.channel.send(content='stupid nerd')
                 return
-            tokens = db.get_tokens_for_user(fun_points_user.id)
+            tokens, _ = db.get_tokens_for_user(fun_points_user.id)
             await message.channel.send(content='le tokens be ' + str(tokens))
         elif content.startswith('funban'):
             # for everyone else
@@ -180,11 +180,11 @@ async def on_message(message):
                 return
             # check how many tokens they have
             discord_caller_id = message.author.id
-            tokens = db.get_tokens_for_user(discord_caller_id)
+            tokens, max_tokens = db.get_tokens_for_user(discord_caller_id)
             if tokens is None:
                 # they have no tokens lets give them some
                 db.insert_tokens_for_user(discord_caller_id, 3)
-                tokens = db.get_tokens_for_user(discord_caller_id)
+                tokens, max_tokens = db.get_tokens_for_user(discord_caller_id)
             if tokens <= 0:
                 # if they have zero or no tokens fun ban them instead
                 events.add_random_fun_user(discord_caller_id, message.guild.id)
@@ -192,7 +192,7 @@ async def on_message(message):
                 return
                 
             # now we want to check and see who has more tokens, if equal fun ban both
-            fun_ban_user_tokens = db.get_tokens_for_user(fun_ban_user.id)
+            fun_ban_user_tokens, fun_ban_max = db.get_tokens_for_user(fun_ban_user.id)
             # if they have None tokens just fun ban them 
             if fun_ban_user_tokens is None:
                 events.add_random_fun_user(fun_ban_user.id, message.guild.id)
@@ -205,7 +205,8 @@ async def on_message(message):
                 events.add_random_fun_user(discord_caller_id, message.guild.id)
                 # we aren't going to subtract a token for less power, their suffer alone is punishment enough and not easy to abuse
                 await message.channel.send(content='Oof thats unfortunate ' + message.author.display_name)
-            elif fun_ban_user_tokens == tokens:
+            elif fun_ban_user_tokens == tokens and tokens < max_tokens:
+                # if they have the same tokens but the caller isnt maxed, if we are maxed we should always get this one
                 events.add_random_fun_user(discord_caller_id, message.guild.id)
                 events.add_random_fun_user(fun_ban_user.id, message.guild.id)
                 # subtract a token
