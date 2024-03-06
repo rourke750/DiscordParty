@@ -106,10 +106,7 @@ class DiscordPartyCommands(commands.Cog):
     async def broadcast(self, ctx, set: Literal['set', 'unset'], channel: discord.VoiceChannel):
         broadcast_role = discord.utils.get(ctx.guild.roles, name=DRole.BROADCAST_ROLE.value)
         if broadcast_role not in channel.overwrites:
-            perms = {'speak': True, 'view_channel': True, 'connect': True}
-            overwrite = discord.PermissionOverwrite(**perms)
-            await channel.set_permissions(broadcast_role, overwrite=overwrite)
-            await ctx.send("Added channel to broadcast!")
+            await add_broadcast_role_helper(channel, broadcast_role)
         else:
             await ctx.send("Channel is already added")
         
@@ -243,6 +240,10 @@ class DiscordPartyCommands(commands.Cog):
             if channel_id == -1:
                 await ctx.send("Added broadcast role for this guild", ephemeral=True)
             else:
+                # since we are setting the channel here, we can add the broadcast role
+                broadcast_role = discord.utils.get(ctx.guild.roles, name=DRole.BROADCAST_ROLE.value)
+                if broadcast_role not in channel.overwrites:
+                    await self.add_broadcast_role_helper(channel, broadcast_role)
                 await ctx.send("Added broadcast role for channel", ephemeral=True)
         
     @refresh.command(name="clear", description="clear all chat party related channels", with_app_command=True)
@@ -324,3 +325,7 @@ class DiscordPartyCommands(commands.Cog):
         else:
             print(error)
             
+    async def add_broadcast_role_helper(self, channel, broadcast_role):
+        perms = {'speak': True, 'view_channel': True, 'connect': True}
+        overwrite = discord.PermissionOverwrite(**perms)
+        await channel.set_permissions(broadcast_role, overwrite=overwrite)

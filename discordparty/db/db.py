@@ -155,7 +155,7 @@ def get_guild_broadcast_role(guild_id, channel_id=-1):
         rows = cur.fetchall()
         if len(rows) == 0:
             return None
-        # we can have two one thats general and one thats channel specific, if two return the one that isnt -1
+        # we can have two one thats general (ie specific to the guild) and one thats channel specific, if two return the one that isnt -1
         if len(rows) == 2:
             for row in rows:
                 if row[1] != -1:
