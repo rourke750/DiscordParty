@@ -1,16 +1,16 @@
-from . import notifications, db_events, random_events, weekly_events
+from . import *
+from . import __all__
+from importlib import import_module
 
 def enable_events():
-    notifications.enable_events()
-    db_events.enable_events()
-    random_events.enable_events()
-    weekly_events.enable_events()
+    for module in __all__:
+        dynamically_loaded_module = import_module(f'.{module}', 'discordparty.events')
+        dynamically_loaded_module.enable_events()
     
 def set_bot(bot):
-    notifications.set_bot(bot)
-    db_events.set_bot(bot)
-    random_events.set_bot(bot)
-    weekly_events.set_bot(bot)
+    for module in __all__:
+        dynamically_loaded_module = import_module(f'.{module}', 'discordparty.events')
+        dynamically_loaded_module.set_bot(bot)
     
 def add_random_fun_user(user_id, guild_id):
     random_events.add_user(user_id, guild_id)

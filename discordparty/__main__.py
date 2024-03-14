@@ -135,6 +135,9 @@ async def on_message(message):
     content = message.content
     # check for commands in guild that arent application
     if message.guild and not message.author.bot:
+        if content.startswith('createsuperfunhelldivers') and await bot.is_owner(message.author):
+            channel_ids = await create_hell_divers_channels(message.guild, bot, 6)
+            db.create_hell_divers_channels(message.guild.id, channel_ids[0], channel_ids[1], channel_ids[2], channel_ids[3], channel_ids[4], channel_ids[5])
         if content.startswith('funban') and await bot.is_owner(message.author):
             array = content.split(' ')
             if len(array) != 2:

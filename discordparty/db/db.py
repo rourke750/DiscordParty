@@ -21,6 +21,7 @@ CREATE_GUILD_ROLE_TABLE = 'CREATE TABLE IF NOT EXISTS guild_role_table (guild_id
 CREATE_REACTION_MESSAGE_TABLE = 'CREATE TABLE IF NOT EXISTS guild_message_id_table (message_id INT, guild_id INT, PRIMARY KEY(guild_id, message_id));'
 CREATE_MESSAGE_TO_REACTION_TABLE = 'CREATE TABLE IF NOT EXISTS guild_reaction_to_role_table(message_id INT, role_id INT, reaction_id text);'
 CREATE_TOKEN_TABLE = 'CREATE TABLE IF NOT EXISTS user_tokens(discord_id INT, tokens INT, max_tokens INT DEFAULT 3, PRIMARY KEY(discord_id));'
+CREATE_HELL_DIVERS_TRACKING_TABLE = 'CREATE TABLE IF NOT EXISTS hell_divers_channel_ids(guild_id INT, win_id INT, bug_kills_id INT, bot_kills_id INT, bullet_acc_id INT, deaths_id INT, team_kills_id INT, PRIMARY KEY(guild_id));'
 
 # create trigger for moving data from one time_record to consolidated
 CREATE_TRIGGER_TIME_MOVEMENT = '''
@@ -64,6 +65,21 @@ INSERT_TOKENS_FOR_USER = '''INSERT OR REPLACE INTO user_tokens (discord_id, toke
 SELECT_TOKENS_FOR_USER = '''SELECT tokens, max_tokens FROM user_tokens WHERE discord_id = ?;'''
 RESET_USER_TOKENS = '''UPDATE user_tokens SET tokens = max_tokens;'''
 RESET_TOKENS_FOR_USER = '''UPDATE user_tokens SET tokens = max_tokens where discord_id = ?;'''
+
+INSERT_DISCORD_HELL_DIVER_CHANNEL_IDS_FOR_GUILD = '''INSERT INTO hell_divers_channel_ids(guild_id, win_id, bug_kills_id, bot_kills_id, bullet_acc_id, deaths_id, team_kills_id) VALUES(?, ?, ?, ?, ?, ?, ?);'''
+SELECT_HELL_DIVER_CHANNELS = '''SELECT guild_id, win_id, bug_kills_id, bot_kills_id, bullet_acc_id, deaths_id, team_kills_id FROM hell_divers_channel_ids;'''
+
+def get_hell_diver_channels():
+    with closing(con.cursor()) as cur:
+        cur.execute(SELECT_HELL_DIVER_CHANNELS)
+        rows = cur.fetchall()
+        return rows
+
+def create_hell_divers_channels(guild_id, win_id, bug_kills_id, bot_kills_id, bullet_acc_id, deaths_id, team_kills_id):
+    with closing(con.cursor()) as cur:
+        values = (guild_id, win_id, bug_kills_id, bot_kills_id, bullet_acc_id, deaths_id, team_kills_id)
+        cur.execute(INSERT_DISCORD_HELL_DIVER_CHANNEL_IDS_FOR_GUILD, values)
+        con.commit()
 
 def reset_token_for_user(discord_id):
     with closing(con.cursor()) as cur:
@@ -271,6 +287,7 @@ def create_tables():
         cur.execute(CREATE_REACTION_MESSAGE_TABLE)
         cur.execute(CREATE_MESSAGE_TO_REACTION_TABLE)
         cur.execute(CREATE_TOKEN_TABLE)
+        cur.execute(CREATE_HELL_DIVERS_TRACKING_TABLE)
         logging.debug('created tables')
         
 def create_triggers():

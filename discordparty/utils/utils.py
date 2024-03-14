@@ -121,3 +121,19 @@ def get_user_obj_id_or_name(guild, val):
     if val.isnumeric():
         return guild.get_member(int(val))
     return discord.utils.get(guild.members, display_name=val)
+    
+async def create_hell_divers_channels(guild, bot, channel_ammount=6):
+    house_party_role = get_bot_role(bot, guild)
+    if house_party_role is None:
+        print("error no bot default role")
+    bot_account = discord.PermissionOverwrite(**{'speak': True, 'view_channel': True, 'connect': True, 'manage_channels': True})
+    overwrite = discord.PermissionOverwrite(**{'speak': False, 'view_channel': True, 'connect': False})
+    hell_divers_stats_category = await guild.create_category("Hell Divers Stats", overwrites={guild.default_role: overwrite, house_party_role: bot_account}, reason="Creating Category for hell divers stats")
+    
+    channels = []
+    for i in range(0, channel_ammount):
+        channels.append(guild.create_voice_channel('Place Holder Freedom Stats', category=hell_divers_stats_category))
+    all_channels = asyncio.gather(*channels)
+    results = await all_channels
+    
+    return [x.id for x in results]
