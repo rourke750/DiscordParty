@@ -22,9 +22,13 @@ async def notify_hour():
             if user is None:
                 user = bot.fetch_user(discord_id)
             chan = user.dm_channel
-            if chan is None:
-                chan = await user.create_dm()
-            await chan.send('You have been in voice for %d minutes' % total_minutes)
+            try:
+                if chan is None:
+                    chan = await user.create_dm()
+                await chan.send('You have been in voice for %d minutes' % total_minutes)
+            except:
+                logging.info('could not create chan or message user ' + str(user.display_name))
+                pass
 
 def enable_events():
     logging.info('starting events for notifications')
